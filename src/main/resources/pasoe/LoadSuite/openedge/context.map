@@ -1,0 +1,108 @@
+{
+  "services": {
+    "context": {
+      "version": "@APIVERSION@",
+      "description": "Performs user context actions which alters their session (exclusive of Tomcat session)",
+      "operations": {
+        "/check": {
+          "GET": {
+            "contentType": "application/json",
+            "description": "Attempt to check if the user's current context is still valid, returns a 403 error when invalidated.",
+            "accessControl": ["ROLE_ANONYMOUS", "ROLE_DevUser"],
+            "statusCode": 200,
+            "entity": {
+              "name": "OpenEdge.LoadSuite.Interface.ContextService",
+              "function": "CheckValidUserContext",
+              "description": "Returns true if context is still valid for a session, otherwise a 403 error.",
+              "typeof": "Progress.Lang.Object",
+              "arg": [
+                {
+                  "ablName": "pcUserID",
+                  "ablType": "character",
+                  "ioMode": "OUTPUT",
+                  "description": "Current user associated with this session",
+                  "msgElem": {
+                    "type": "field",
+                    "name": "user"
+                  }
+                },
+                {
+                  "ablName": "plVaid",
+                  "ablType": "logical",
+                  "ioMode": "OUTPUT",
+                  "description": "Returns true only when valid",
+                  "msgElem": {
+                    "type": "field",
+                    "name": "valid"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "/invalidate": {
+          "GET": {
+            "contentType": "application/json",
+            "description": "Requests invalidation of the user's current context data.",
+            "accessControl": ["ROLE_ANONYMOUS", "ROLE_DevUser"],
+            "statusCode": 200,
+            "entity": {
+              "name": "OpenEdge.LoadSuite.Interface.ContextService",
+              "function": "InvalidateUserContext",
+              "description": "Invalidates the user's current context by marking is as expired.",
+              "typeof": "Progress.Lang.Object",
+              "arg": [
+                {
+                  "ablName": "pdExpiration",
+                  "ablType": "datetime-tz",
+                  "ioMode": "OUTPUT",
+                  "description": "Timestamp of the invalidation mark",
+                  "msgElem": {
+                    "type": "field",
+                    "name": "expired"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "/cleanup": {
+          "DELETE": {
+            "contentType": "application/json",
+            "description": "Perform a clenaup of stale context records.",
+            "accessControl": ["ROLE_ANONYMOUS", "ROLE_DevUser"],
+            "statusCode": 200,
+            "entity": {
+              "name": "OpenEdge.LoadSuite.Interface.ContextService",
+              "function": "CleanupUserContext",
+              "description": "Removes context data for a specific user.",
+              "typeof": "Progress.Lang.Object",
+              "arg": [
+                {
+                  "ablName": "pcUserID",
+                  "ablType": "character",
+                  "ioMode": "INPUT",
+                  "description": "Username for context cleanup",
+                  "msgElem": {
+                    "type": "query",
+                    "name": "username"
+                  }
+                },
+                {
+                  "ablName": "plSuccess",
+                  "ablType": "logical",
+                  "ioMode": "OUTPUT",
+                  "description": "Returns true if successful",
+                  "msgElem": {
+                    "type": "field",
+                    "name": "success"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,43 @@
+{
+    "configurations": [
+        {
+            "tempDir": "${workspaceFolder}/temp",
+            "importOpenedgeProjectJson": true,
+            "openedgeProjectProfile": "default",
+            "timeout": 300000,
+            "command": {
+                "executable": "_progres",
+                "batch": true,
+                "debugHost": "localhost",
+                "debugPort": 3199,
+                "debugConnectMaxWait": 30000,
+                "additionalArgs": []
+            },
+            "options": {
+                "output": {
+                    "location": "${tempDir}",
+                    "filename": "results.xml",
+                    "format": "xml",
+                    "updateFile": "updates.log"
+                },
+                "debug": false,
+                "quitOnEnd": true,
+                "writeLog": false,
+                "showErrorMessage": true,
+                "throwError": true,
+                "xref": {
+                    "useXref": false,
+                    "xrefLocation": "${tempDir}",
+                    "xrefExtension": "xml.xref",
+                    "xrefThrowError": false
+                }
+            },
+            "profiler": {
+                "enabled": true,
+                "description": "Run via VSCode - ABLUnit Test Runner Extension",
+                "filename": "${tempDir}/prof.out"
+            },
+            "initializationProcedure": null
+        }
+    ]
+}

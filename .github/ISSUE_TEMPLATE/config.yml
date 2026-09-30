@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: OpenEdge A-Team
+    url: mailto:oeeng-ateam@progress.com
+    about: Original code authors and administrators.

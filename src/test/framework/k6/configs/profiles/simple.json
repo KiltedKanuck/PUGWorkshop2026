@@ -1,0 +1,28 @@
+{
+  "meta": {
+    "name": "simple",
+    "description": "Canonical simple profile - 1 VU, 1 iteration, no think time. Safe fallback when no profile is specified. Identical execution shape to smoke but with looser quality gates.",
+    "version": 1
+  },
+  "run": {
+    "profile": "simple"
+  },
+  "env": {
+    "BASE_URL":                    "http://localhostm:7780",
+    "MIN_THINK_TIME":              0,
+    "MAX_THINK_TIME":              0,
+    "SEED_RECORD_MAX":             100000,
+    "CRUD_WEIGHT":                 0.9,
+    "NOOP_WEIGHT":                 0.1,
+    "ANOMALY_DISRUPT_WEIGHT":      0.0,
+    "ANOMALY_FILES_WEIGHT":        0.0,
+    "ANOMALY_LEAK_WEIGHT":         0.0,
+    "ANOMALY_SIMULATE_WEIGHT":     0.0
+  },
+  "options": {
+    "tags": {
+      "suite": "oels",
+      "config": "simple"
+    }
+  }
+}

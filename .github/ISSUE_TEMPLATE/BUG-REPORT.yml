@@ -1,0 +1,118 @@
+name: Bug Report
+description: File a bug report.
+title: "[Bug]: <short description>"
+labels: ["bug", "priority: medium"]
+type: Bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please use the following form to submit a bug report for existing behavior.
+
+        > **Security vulnerabilities** — do not file security issues here. Contact [oeeng-ateam@progress.com](mailto:oeeng-ateam@progress.com) directly so the issue can be handled confidentially.
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Pre-flight checklist
+      options:
+        - label: I searched existing issues and this has not been reported
+          required: true
+        - label: I can reproduce this on the latest available build
+          required: true
+        - label: This is a regression (it worked in a previous version)
+
+  - type: input
+    id: regression_version
+    attributes:
+      label: Last known working version
+      description: If this is a regression, provide the last version where this worked correctly.
+      placeholder: "e.g. 12.8.11"
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Tooling
+        - Database
+        - PASOE
+        - API
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Who does this affect?
+      options:
+        - Just me
+        - My team
+        - All users
+    validations:
+      required: true
+
+  - type: dropdown
+    id: oe_version
+    attributes:
+      label: OpenEdge version
+      options:
+        - "12.8"
+        - "13.1"
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: What were you trying to accomplish?
+      placeholder: Describe your goal, not how you tried to achieve it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps taken
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected outcome
+      placeholder: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual outcome
+      placeholder: What actually happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log or error output
+      description: Paste any error messages, stack traces, or log snippets. This will be rendered as code automatically.
+      render: shell
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: "OS, Java version, DLC path, any relevant configuration overrides"
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context

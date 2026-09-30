@@ -1,0 +1,18 @@
+{
+  "meta": {
+    "name": "auth-debug-smoke",
+    "description": "Auth smoke run with debug logging - 1 VU, 1 iteration. Emits [auth] debug logs for every login/logout/session event. Use to trace auth headers, JSESSIONID lifecycle, and session cookie behavior.",
+    "version": 1
+  },
+  "run": {
+    "profile": "smoke"
+  },
+  "env": {
+    "BASE_URL":                    "http://127.0.0.1:7780",
+    "MIN_THINK_TIME":              0,
+    "MAX_THINK_TIME":              0,
+    "SEED_RECORD_MAX":             100000,
+    "AUTH_LOGOUT_EACH_ITERATION":  false,
+    "AUTH_DEBUG":                  true
+  }
+}

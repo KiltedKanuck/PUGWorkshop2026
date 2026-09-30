@@ -1,0 +1,31 @@
+# Installation: Place this into your C:\Users\<username>\.ssh folder (aka. "~/.ssh").
+
+# Common Properties - Applies to all hosts on AWS which uses the same username and key file.
+
+Host load-dbteam k6-*
+    User ubuntu
+    IdentityFile "~/.ssh/loadteam.pem"
+    ServerAliveInterval 60
+
+# PASOE Server - This is the PASOE+Database application SERVER instance
+
+Host load-dbteam
+	HostName 54.80.192.28
+
+# Grafana k6 Nodes - These are the identical testing CLIENT instances
+
+Host k6-1
+    HostName 35.173.190.160
+
+Host k6-2
+    HostName 23.20.5.30
+
+Host k6-3
+    HostName 3.84.81.72
+
+Host k6-4
+    HostName 13.223.79.39
+
+Host k6-5
+    HostName 54.159.246.63
+

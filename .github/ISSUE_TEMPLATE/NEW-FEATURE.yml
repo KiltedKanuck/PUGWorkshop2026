@@ -1,0 +1,69 @@
+name: Feature Request
+description: Request a new feature.
+title: "[Feature]: <short description>"
+labels: ["enhancement", "priority: medium"]
+type: Feature
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please use the following form to submit a request for a new feature.
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Pre-flight checklist
+      options:
+        - label: I searched existing issues and this has not already been requested
+          required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Tooling
+        - Database
+        - PASOE
+        - API
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Who does this affect?
+      options:
+        - Just me
+        - My team
+        - All users
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      placeholder: Describe the limitation or gap you are experiencing, not a specific solution.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      placeholder: Describe what you would like to see added or changed.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      placeholder: Describe any workarounds or alternative approaches you have already tried or considered.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context

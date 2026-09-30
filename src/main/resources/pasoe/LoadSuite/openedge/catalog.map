@@ -1,0 +1,55 @@
+{
+  "services": {
+    "catalog": {
+      "version": "@APIVERSION@",
+      "description": "Returns an OpenAPI catalog for available services",
+      "operations": {
+        "/ping": {
+          "GET": {
+            "contentType": "application/json",
+            "description": "Returns a JSON object as proof of life for the service.",
+            "statusCode": 200,
+            "entity": {
+              "name": "OpenEdge.LoadSuite.Interface.CatalogService",
+              "function": "GetPingResponse",
+              "description": "Returns a simple response to indicate that the service is available",
+              "typeof": "Progress.Lang.Object",
+              "arg": [{
+                "ablName": "pingResponse",
+                "ablType": "class Progress.Json.ObjectModel.JsonObject",
+                "ioMode": "OUTPUT",
+                "description": "Simple JSON response",
+                "msgElem": {
+                  "type": "body"
+                }
+              }]
+            }
+          }
+        },
+        "/openapi": {
+          "GET": {
+            "contentType": "application/json",
+            "description": "Returns a JSON object with an OpenAPI v3.x formatted description of resource endpoints. This utilizes the internal registry created at startup for the application.",
+            "accessControl": ["ROLE_ANONYMOUS","ROLE_DevUser","ROLE_MCP"],
+            "statusCode": 200,
+            "entity": {
+              "name": "OpenEdge.LoadSuite.Interface.CatalogService",
+              "function": "GetOpenApiCatalog",
+              "description": "Returns an OpenAPI v3.x formatted catalog with discovered service endpoints, server information, and default configuration",
+              "typeof": "Progress.Lang.Object",
+              "arg": [{
+                "ablName": "catalog",
+                "ablType": "class Progress.Json.ObjectModel.JsonObject",
+                "ioMode": "OUTPUT",
+                "description": "OpenAPI v3.x formatted JSON catalog object with service endpoints and configuration",
+                "msgElem": {
+                  "type": "body"
+                }
+              }]
+            }
+          }
+        }
+      }
+    }
+  }
+}

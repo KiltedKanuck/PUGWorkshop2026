@@ -1,0 +1,17 @@
+#
+# https://help.github.com/articles/dealing-with-line-endings/
+#
+# These are explicitly windows files and should use crlf
+*.bat text eol=crlf
+
+# These are explicitly linux files and should use lf
+*.sh text eol=lf
+
+# Force-mark extensions as ABL source
+*.cls linguist-language=OpenEdge ABL
+*.w linguist-language=OpenEdge ABL
+*.p linguist-language=OpenEdge ABL
+*.i linguist-language=OpenEdge ABL
+
+# we assume files named 'bin' are binary
+*.bin binary

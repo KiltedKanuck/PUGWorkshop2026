@@ -1,0 +1,32 @@
+{
+  "meta": {
+    "name": "chaos",
+    "description": "Canonical chaos profile - randomized ramping-vus stages for 10 minutes (1 stage per minute), up to 20 VUs, 5% idle-stage chance, 0.5s scenario stagger, think time 0.1–1.0s. Use for resilience testing against spiky/irregular concurrency. No fixed thresholds - caller decides enforcement scope.",
+    "version": 1
+  },
+  "run": {
+    "profile": "chaos"
+  },
+  "env": {
+    "BASE_URL":                    "http://127.0.0.1:7780",
+    "MAX_VUS":                     20,
+    "DURATION":                    10,
+    "IDLE_STAGE_CHANCE":           0.05,
+    "SCENARIO_STAGGER_SECONDS":    0.5,
+    "MIN_THINK_TIME":              0.1,
+    "MAX_THINK_TIME":              1.0,
+    "SEED_RECORD_MAX":             100000,
+    "CRUD_WEIGHT":                 0.9,
+    "NOOP_WEIGHT":                 0.1,
+    "ANOMALY_DISRUPT_WEIGHT":      0.0,
+    "ANOMALY_FILES_WEIGHT":        0.0,
+    "ANOMALY_LEAK_WEIGHT":         0.0,
+    "ANOMALY_SIMULATE_WEIGHT":     0.0
+  },
+  "options": {
+    "tags": {
+      "suite": "oels",
+      "config": "chaos"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "meta": {
+    "name": "stress-capacity",
+    "description": "High-capacity stress run - staircase ramp to 1000 VUs over 60 minutes, session expirations every 15 minutes.",
+    "version": 1
+  },
+  "run": {
+    "profile": "stress"
+  },
+  "env": {
+    "BASE_URL":                      "http://127.0.0.1:7780",
+    "MAX_VUS":                       1000,
+    "DURATION":                      60,
+    "MIN_THINK_TIME":                0.1,
+    "MAX_THINK_TIME":                0.4,
+    "SEED_RECORD_MAX":               100000,
+    "CRUD_WEIGHT":                   0.9,
+    "NOOP_WEIGHT":                   0.1,
+    "ANOMALY_DISRUPT_WEIGHT":        0.0,
+    "ANOMALY_FILES_WEIGHT":          0.0,
+    "ANOMALY_LEAK_WEIGHT":           0.0,
+    "ANOMALY_SIMULATE_WEIGHT":       0.0,
+    "AUTH_SESSION_DURATION_SECONDS": 900
+  }
+}

@@ -1,0 +1,43 @@
+# Startup for API services ABL Application
+#
+# Use a specific codepage (default: UTF-8)
+-cpinternal @CODEPAGE@
+-cpstream @CODEPAGE@
+# Use a specific collation (default: BASIC)
+-cpcoll @COLLATION@
+-cpcase @COLLATION@
+#
+# Localizations
+-d @DATEFORMAT@
+-numsep @NUMSEP@
+-numdec @NUMDEC@
+#
+# Client Parameters
+# -Bt   - https://docs.progress.com/bundle/openedge-startup-and-parameter-reference/page/Number-of-Buffers-for-Temporary-Tables-Bt.html
+# -D    - https://docs.progress.com/bundle/openedge-startup-and-parameter-reference/page/Directory-Size-D.html
+# -l    - https://docs.progress.com/bundle/openedge-startup-and-parameter-reference/page/Lock-Table-Entries-l.html
+# -mmax - https://docs.progress.com/bundle/openedge-startup-and-parameter-reference/page/Maximum-Memory-mmax.html
+# -q    - https://docs.progress.com/bundle/openedge-startup-and-parameter-reference/page/Quick-Request-q.html
+# -s    - https://docs.progress.com/bundle/openedge-startup-and-parameter-reference/page/Stack-Size-s.html
+# -tmpbsize - https://docs.progress.com/bundle/openedge-startup-and-parameter-reference/page/Temporary-Table-Database-Block-Size-tmpbsize.html
+# -lkwtmo   - https://docs.progress.com/bundle/openedge-startup-and-parameter-reference/page/Lock-Timeout-lkwtmo.html
+-Bt 10000
+-D 1000
+-l 600
+-mmax 8192
+-q
+-s 800
+-tmpbsize 4
+-errorstack
+-rereadnolock
+-lkwtmo @LOCKWAIT@
+
+#
+# No database connection defined here.
+# Use the sessionStartupProcParam to be applied during SessionActivate execution.
+# Examples:
+#   sessionStartupProcParam={"dbName": "@DBNAME@", "dbPath": "CATALINA_BASE/db"}
+#   sessionStartupProcParam={"dbName": "@DBNAME@", "dbHost": "@DBHOST@", "dbPort": @DBPORT@}
+
+# Optional: Enable memory profiling for a comprehensive report per ABL Session:
+#-profileMemory "@PASPATH@/ablapps/@PRIMARY_ABLAPP@/openedge/mprofiler.config"

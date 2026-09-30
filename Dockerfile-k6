@@ -1,0 +1,119 @@
+# ---------------------------- k6 Test Container ---------------------------
+# -----
+# ----- Dockerfile that builds a self-contained k6 load testing container
+# -----
+# ----- What this Dockerfile does:
+# -----   1. Starts from official Grafana k6:2.0.0 base image
+# -----   2. Installs utilities: wget, unzip, python3, vim
+# -----   3. Creates /opt/k6/tests directory and sets it as working directory
+# -----   4. Downloads oels-k6-tests.zip from Artifactory during build
+# -----   5. Extracts the zip contents to /opt/k6/tests (current directory)
+# -----   6. Renames configs/ to configs.dist/ and docs/ to docs.dist/
+# -----   7. Makes all .sh scripts executable
+# -----   8. Adds entrypoint script that refreshes configs/ and docs/ on startup
+# -----   9. Creates volume mount points for configs, docs, and logs
+# -----
+# ----- Container filesystem structure after build:
+# -----   /opt/k6/tests/
+# -----   ├── *.js, *.sh, *.py     ← Test scripts (baked into image)
+# -----   ├── configs.dist/     ← Sample configs (baked into image)
+# -----   ├── docs.dist/          ← Default docs (baked into image)
+# -----   ├── configs/             ← Volume mount (auto-refreshed from samples on startup)
+# -----   ├── docs/                ← Volume mount (auto-refreshed from docs.dist on startup)
+# -----   └── logs/                ← Volume mount (k6 writes all results here)
+# -----
+# ----- This image is built by the Gradle 'buildClientImage' task which passes
+# ----- BUILD_VERSION as a build argument.
+# -----
+# ----- Manual build example:
+# -----     docker build \
+# -----         --build-arg BUILD_VERSION=1.0.0 \
+# -----         -t oels/k6:1.0.0 \
+# -----         -t oels/k6:latest \
+# -----         -f Dockerfile-k6 .
+# -----
+# ----- Manual save example:
+# -----     docker save -o oels-k6-latest.tar oels/k6:latest
+# -----
+
+# ----- Define common arguments
+ARG K6_VERSION=2.0.0
+ARG REPO_URL="https://bed-artifactory.bedford.progress.com/artifactory/oe-maven-develop-bedford"
+ARG BUILD_VERSION=1.0.0
+
+# ----- Use the official Grafana k6 image as the base
+FROM grafana/k6:${K6_VERSION}
+ARG REPO_URL
+ARG BUILD_VERSION
+
+# ----- Switch to root to install packages
+USER root
+
+# ----- Install utilities:
+# -----   wget/unzip     - download and extract tests
+# -----   vim/nano       - config file editing
+# -----   bash           - shell script execution
+# -----   curl           - HTTP endpoint testing
+# -----   jq             - JSON parsing and filtering
+# -----   iputils        - ping for connectivity testing
+# -----   bind-tools     - dig/nslookup for DNS troubleshooting
+RUN apk add --no-cache wget unzip python3 vim nano bash curl jq iputils bind-tools
+
+# ----- Create directory structure and set working directory
+# ----- The zip contains a tests/ subdirectory; unzip will create /opt/k6/tests automatically
+RUN mkdir -p /opt/k6
+WORKDIR /opt/k6
+
+# ----- Download the OELS k6 test scripts from Artifactory
+# ----- The zip contains a tests/ subdirectory with the contents of src/test/framework/k6
+RUN wget --progress=dot:mega \
+    ${REPO_URL}/com/progress/openedge/oels/${BUILD_VERSION}/oels-${BUILD_VERSION}-k6-tests.zip \
+    -O oels-k6-tests.zip
+
+# ----- Extract test scripts to /opt/k6/tests (created by unzip from the tests/ subdirectory in the zip)
+# ----- After extraction: /opt/k6/tests contains all .js, .sh, and .json files in subdirectories
+# ----- Rename configs/ to configs.dist/ and docs/ to docs.dist/ for runtime refresh
+RUN unzip -q oels-k6-tests.zip -d . && \
+    rm oels-k6-tests.zip && \
+    mv tests/configs tests/configs.dist && \
+    mv tests/docs tests/docs.dist && \
+    chmod +x tests/*.sh
+
+# ----- Copy entrypoint script that refreshes configs/docs on startup
+COPY src/main/resources/docker/scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# ----- Set image metadata labels
+LABEL org.opencontainers.image.vendor="Progress Software Corporation"
+LABEL org.opencontainers.image.authors="cameron.wright@progress.com;dustin.grau@progress.com"
+LABEL org.opencontainers.image.title="OpenEdge Load Suite k6 Tests"
+LABEL org.opencontainers.image.version="${BUILD_VERSION}"
+LABEL org.opencontainers.image.base.name="grafana/k6:${K6_VERSION}"
+
+# ----- Create volume mount points for user-accessible directories
+# ----- These are EMPTY directories that will be mounted from the host at runtime
+# ----- configs/ = auto-refreshed from configs.dist on startup, users can edit
+# ----- docs/    = auto-refreshed from docs.dist on startup, users can edit
+# ----- logs/    = k6 writes test results and output here
+RUN mkdir -p /opt/k6/tests/configs /opt/k6/tests/docs /opt/k6/tests/logs && \
+    chown -R k6:k6 /opt/k6/tests/configs /opt/k6/tests/docs /opt/k6/tests/logs
+
+# ----- Declare volumes for host-accessible directories
+# ----- docker-compose.yaml mounts host directories here to share data with container
+VOLUME ["/opt/k6/tests/configs", "/opt/k6/tests/docs", "/opt/k6/tests/logs"]
+
+# ----- Switch back to k6 user (the default in the official image)
+USER k6
+
+# ----- Set working directory where tests are located
+# ----- Users start here when entering container interactively
+WORKDIR /opt/k6/tests
+
+# ----- Set custom entrypoint that refreshes configs/docs from sample/local folders
+# ----- Then passes control to k6 command (preserves default k6 behavior)
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+
+# ----- Default command from grafana/k6 base image
+# ----- Interactive: docker run -it --rm oels/k6:latest sh
+# ----- Run test:   docker run --rm oels/k6:latest k6 run launchUnifiedScenario.js
+CMD ["k6"]

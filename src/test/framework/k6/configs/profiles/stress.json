@@ -1,0 +1,31 @@
+{
+  "meta": {
+    "name": "stress",
+    "description": "Canonical stress profile - staircase ramp to 20 VUs over 10 minutes (4 x 2-min stages + 2-min cooldown), fixed 0.1s think time. Identifies saturation points and degradation behavior.",
+    "version": 1
+  },
+  "run": {
+    "profile": "stress"
+  },
+  "env": {
+    "BASE_URL":                      "http://127.0.0.1:7780",
+    "MAX_VUS":                       20,
+    "DURATION":                      10,
+    "MIN_THINK_TIME":                0.1,
+    "MAX_THINK_TIME":                0.4,
+    "SEED_RECORD_MAX":               100000,
+    "CRUD_WEIGHT":                   0.9,
+    "NOOP_WEIGHT":                   0.1,
+    "ANOMALY_DISRUPT_WEIGHT":        0.0,
+    "ANOMALY_FILES_WEIGHT":          0.0,
+    "ANOMALY_LEAK_WEIGHT":           0.0,
+    "ANOMALY_SIMULATE_WEIGHT":       0.0,
+    "AUTH_SESSION_DURATION_SECONDS": 900
+  },
+  "options": {
+    "tags": {
+      "suite": "oels",
+      "config": "stress"
+    }
+  }
+}

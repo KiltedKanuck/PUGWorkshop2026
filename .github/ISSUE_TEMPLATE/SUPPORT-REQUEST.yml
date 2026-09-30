@@ -1,0 +1,47 @@
+name: Support Request
+description: Request general support.
+title: "[Support]: <short description>"
+labels: ["question", "help wanted", "priority: medium"]
+type: Task
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Support requests are intended to offer aid by clarifying documentation or suggesting updated processes. Please use the Bug Report for defects in behavior or a Feature Request for wishlist items.
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Pre-flight checklist
+      options:
+        - label: I reviewed the available documentation and could not find an answer
+          required: true
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: What are you trying to accomplish?
+      placeholder: Describe your end goal clearly, independent of any specific approach you have tried.
+    validations:
+      required: true
+
+  - type: textarea
+    id: tried
+    attributes:
+      label: What have you already tried?
+      placeholder: Describe any steps, configurations, or approaches you have attempted.
+    validations:
+      required: true
+
+  - type: textarea
+    id: outcome
+    attributes:
+      label: What happened vs. what you expected?
+      placeholder: If something went wrong or produced unexpected results, describe it here.
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context

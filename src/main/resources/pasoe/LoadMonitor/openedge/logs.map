@@ -1,0 +1,200 @@
+{
+  "services": {
+    "logs": {
+      "version": "@APIVERSION@",
+      "description": "Controlled access to server .log files and logging configuration",
+      "operations": {
+        "/config": {
+          "GET": {
+            "contentType": "application/json",
+            "description": "Returns the logging.config JSON discovered via PROPATH.",
+            "accessControl": ["ROLE_ANONYMOUS", "ROLE_DevUser"],
+            "statusCode": 200,
+            "entity": {
+              "name": "OpenEdge.LoadSuite.Interface.LoggingService",
+              "function": "GetLoggingConfig",
+              "description": "Returns the active logging.config as a JSON object.",
+              "typeof": "Progress.Lang.Object",
+              "arg": [
+                {
+                  "ablName": "pcConfigPath",
+                  "ablType": "character",
+                  "ioMode": "OUTPUT",
+                  "description": "The path to logging.config, hidden.",
+                  "msgElem": {
+                    "type": "none",
+                    "name": null
+                  }
+                },
+                {
+                  "ablName": "poConfigData",
+                  "ablType": "class Progress.Json.ObjectModel.JsonObject",
+                  "ioMode": "OUTPUT",
+                  "description": "The logging.config payload as a JSON object with a top-level logger property.",
+                  "msgElem": {
+                    "type": "body"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "/verbosity/{name}": {
+          "PUT": {
+            "contentType": "application/json",
+            "description": "Updates the logging.config item to one of: OFF, ERROR, WARN, INFO, DEBUG, TRACE. Saves logging.config.bak-<timestamp> before writing.",
+            "accessControl": ["ROLE_ANONYMOUS"],
+            "statusCode": 200,
+            "entity": {
+              "name": "OpenEdge.LoadSuite.Interface.LoggingService",
+              "function": "UpdateLoggingVerbosity",
+              "description": "Updates a single existing top-level logging.config key.",
+              "typeof": "Progress.Lang.Object",
+              "arg": [
+                {
+                  "ablName": "pcLoggerName",
+                  "ablType": "character",
+                  "ioMode": "INPUT",
+                  "description": "Existing logging.config key name to update.",
+                  "msgElem": {
+                    "type": "path",
+                    "name": "name"
+                  }
+                },
+                {
+                  "ablName": "pcLoggingLevel",
+                  "ablType": "character",
+                  "ioMode": "INPUT",
+                  "description": "Verbosity level enum: OFF, ERROR, WARN, INFO, DEBUG, TRACE.",
+                  "msgElem": {
+                    "type": "query",
+                    "name": "level"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "/list": {
+          "GET": {
+            "contentType": "application/json",
+            "description": "Returns a list of available .log files from SESSION:TEMP-DIRECTORY and subfolders.",
+            "accessControl": ["ROLE_ANONYMOUS"],
+            "statusCode": 200,
+            "entity": {
+              "name": "OpenEdge.LoadSuite.Interface.LoggingService",
+              "function": "GetFileList",
+              "description": "Returns an array of .log files ordered by full path.",
+              "typeof": "Progress.Lang.Object",
+              "arg": [
+                {
+                  "ablName": "poFiles",
+                  "ablType": "class Progress.Json.ObjectModel.JsonArray",
+                  "ioMode": "OUTPUT",
+                  "description": "Array of log file metadata objects (id, name, path, sizeBytes, modified).",
+                  "msgElem": {
+                    "type": "field",
+                    "name": "files"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "/download/{id}": {
+          "GET": {
+            "contentType": "text/plain; charset=utf-8",
+            "description": "Returns .log content for a selected file id from SESSION:TEMP-DIRECTORY.",
+            "accessControl": ["ROLE_ANONYMOUS"],
+            "statusCode": 200,
+            "entity": {
+              "name": "OpenEdge.LoadSuite.Interface.LoggingService",
+              "function": "DownloadFile",
+              "description": "Downloads allowed .log file content by list id.",
+              "typeof": "Progress.Lang.Object",
+              "arg": [
+                {
+                  "ablName": "pcFileID",
+                  "ablType": "character",
+                  "ioMode": "INPUT",
+                  "description": "Hash id from /list output.",
+                  "msgElem": {
+                    "type": "path",
+                    "name": "id"
+                  }
+                },
+                {
+                  "ablName": "pcContentDisposition",
+                  "ablType": "character",
+                  "ioMode": "OUTPUT",
+                  "description": "Content-Disposition response header value.",
+                  "msgElem": {
+                    "type": "header",
+                    "name": "Content-Disposition"
+                  }
+                },
+                {
+                  "ablName": "poContents",
+                  "ablType": "longchar",
+                  "ioMode": "OUTPUT",
+                  "description": "The selected .log file contents.",
+                  "msgElem": {
+                    "type": "body"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "schemas": {
+        "poConfigData": {
+          "type": "object",
+          "description": "Minimal logging configuration payload.",
+          "properties": {
+            "logger": {
+              "type": "object",
+              "description": "Logger configuration entries keyed by logger name.",
+              "additionalProperties": true
+            }
+          },
+          "required": ["logger"]
+        },
+        "logFileItem": {
+          "type": "object",
+          "description": "Metadata for one indexed .log file.",
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "Stable identifier used by /download."
+            },
+            "name": {
+              "type": "string",
+              "description": "File name only."
+            },
+            "path": {
+              "type": "string",
+              "description": "Resolved absolute path to the file."
+            },
+            "sizeBytes": {
+              "type": "integer",
+              "description": "File size in bytes."
+            },
+            "modified": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Last modified timestamp when available."
+            }
+          }
+        },
+        "poFiles": {
+          "type": "array",
+          "description": "Array of log file metadata.",
+          "items": {
+            "$ref": "#/components/schemas/logFileItem"
+          }
+        }
+      }
+    }
+  }
+}

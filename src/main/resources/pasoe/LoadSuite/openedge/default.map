@@ -1,0 +1,36 @@
+{
+  "services": {
+    "default": {
+      "version": "@APIVERSION@",
+      "description": "Trigger disruptive or unusual server-side behavior",
+      "operations": {
+        "\/leak\/code\/handle": {
+          "GET": {
+            "contentType": "application/json",
+            "description": "Creates a persistent procedure handle that is intentionally not cleaned up",
+            "accessControl": ["ROLE_ANONYMOUS","ROLE_DevUser"],
+            "statusCode": 200,
+            "entity": {
+              "name": "OpenEdge.PUG.Interface.DefaultService",
+              "function": "Hello",
+              "description": "Demonstrates Hello World through legacy code",
+              "typeof": "Progress.Lang.Object",
+              "arg": [
+                {
+                  "ablName": "pcMessage",
+                  "description": "Message returned from the persistent procedure",
+                  "ablType": "character",
+                  "ioMode": "OUTPUT",
+                  "msgElem": {
+                    "type": "field",
+                    "name": "textMessage"
+                  }
+                }
+              ]
+            }
+          }
+
+      }
+    }
+  }
+}

@@ -1,0 +1,3960 @@
+ADD SEQUENCE "NextBinNum"
+  INITIAL 0
+  INCREMENT 1
+  CYCLE-ON-LIMIT no
+  MIN-VAL 0
+
+ADD SEQUENCE "NextCustNum"
+  INITIAL 0
+  INCREMENT 1
+  CYCLE-ON-LIMIT no
+  MIN-VAL 0
+
+ADD SEQUENCE "NextEmpNum"
+  INITIAL 0
+  INCREMENT 1
+  CYCLE-ON-LIMIT no
+  MIN-VAL 0
+
+ADD SEQUENCE "NextItemNum"
+  INITIAL 0
+  INCREMENT 1
+  CYCLE-ON-LIMIT no
+  MIN-VAL 0
+
+ADD SEQUENCE "NextInvNum"
+  INITIAL 0
+  INCREMENT 1
+  CYCLE-ON-LIMIT no
+  MIN-VAL 0
+
+ADD SEQUENCE "NextInvTransNum"
+  INITIAL 0
+  INCREMENT 1
+  CYCLE-ON-LIMIT no
+  MIN-VAL 0
+
+ADD SEQUENCE "NextLocalDefNum"
+  INITIAL 0
+  INCREMENT 1
+  CYCLE-ON-LIMIT no
+  MIN-VAL 0
+
+ADD SEQUENCE "NextOrdNum"
+  INITIAL 0
+  INCREMENT 1
+  CYCLE-ON-LIMIT no
+  MIN-VAL 0
+
+ADD SEQUENCE "NextPONum"
+  INITIAL 0
+  INCREMENT 1
+  CYCLE-ON-LIMIT no
+  MIN-VAL 0
+
+ADD SEQUENCE "NextRefNum"
+  INITIAL 0
+  INCREMENT 1
+  CYCLE-ON-LIMIT no
+  MIN-VAL 0
+
+ADD SEQUENCE "NextSupplNum"
+  INITIAL 0
+  INCREMENT 1
+  CYCLE-ON-LIMIT no
+  MIN-VAL 0
+
+ADD SEQUENCE "NextWareNum"
+  INITIAL 0
+  INCREMENT 1
+  CYCLE-ON-LIMIT no
+  MIN-VAL 0
+
+ADD SEQUENCE "NextAuditKey"
+  INITIAL 0
+  INCREMENT 1
+  CYCLE-ON-LIMIT yes
+  MIN-VAL 0
+
+ADD SEQUENCE "NextReplNum"
+  INITIAL 0
+  INCREMENT 1
+  CYCLE-ON-LIMIT yes
+  MIN-VAL 0
+
+ADD TABLE "Benefits"
+  AREA "Data Area"
+  DESCRIPTION "The benefits table contains employee benefits."
+  DUMP-NAME "benefits"
+
+ADD FIELD "EmpNum" OF "Benefits" AS int64 
+  FORMAT "zzzzzzzzz9"
+  INITIAL "0"
+  LABEL "Emp No"
+  MAX-WIDTH 4
+  VALEXP "CAN-FIND(employee OF benefits)"
+  VALMSG "Employee must exist."
+  HELP "Please enter the Emp Number"
+  ORDER 10
+
+ADD FIELD "HealthCare" OF "Benefits" AS character 
+  FORMAT "x(8)"
+  INITIAL ""
+  LABEL "Health Care"
+  MAX-WIDTH 16
+  HELP "Please enter the Health Care field."
+  LENGTH 0
+  ORDER 20
+
+ADD FIELD "LifeInsurance" OF "Benefits" AS int64 
+  FORMAT "$>>,>>>,>>>"
+  INITIAL "0"
+  LABEL "Life Insurance"
+  MAX-WIDTH 4
+  HELP "Please enter the Life Insurance field."
+  ORDER 30
+
+ADD FIELD "Pension401K" OF "Benefits" AS int64 
+  FORMAT ">>,>>9"
+  INITIAL "0"
+  LABEL "Pension401K"
+  MAX-WIDTH 4
+  HELP "Please enter the 401K field."
+  ORDER 40
+
+ADD FIELD "StockPurchase" OF "Benefits" AS int64 
+  FORMAT ">>,>>9"
+  INITIAL "0"
+  LABEL "Stock Purchase"
+  MAX-WIDTH 4
+  HELP "Please enter the Stock Purchase field."
+  ORDER 50
+
+ADD FIELD "MedicalSpending" OF "Benefits" AS int64 
+  FORMAT ">>,>>9"
+  INITIAL "0"
+  LABEL "Medical Spending"
+  MAX-WIDTH 4
+  HELP "Please enter the Medical Spending field."
+  ORDER 60
+
+ADD FIELD "DependentCare" OF "Benefits" AS int64 
+  FORMAT ">>,>>9"
+  INITIAL "0"
+  LABEL "Dependent Care"
+  MAX-WIDTH 4
+  HELP "Please enter the dependent care field."
+  ORDER 70
+
+ADD INDEX "EmpNo" ON "Benefits" 
+  AREA "Index Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "EmpNum" ASCENDING 
+
+ADD TABLE "BillTo"
+  AREA "Data Area"
+  DESCRIPTION "The billto table contains bill to address information for an order."
+  DUMP-NAME "billto"
+
+ADD FIELD "CustNum" OF "BillTo" AS int64 
+  FORMAT ">>>>9"
+  INITIAL "0"
+  LABEL "Cust Num"
+  MAX-WIDTH 4
+  VALEXP "CAN-FIND(customer OF billto)"
+  VALMSG "Customer number must be greater than zero"
+  HELP "Please enter the customer number."
+  ORDER 10
+
+ADD FIELD "BillToID" OF "BillTo" AS int64 
+  FORMAT "zzzzzzzzz9"
+  INITIAL "0"
+  LABEL "BillToID"
+  MAX-WIDTH 4
+  HELP "Please enter the BillTo ID"
+  ORDER 20
+
+ADD FIELD "Name" OF "BillTo" AS character 
+  FORMAT "x(30)"
+  INITIAL ""
+  LABEL "Name"
+  MAX-WIDTH 60
+  HELP "Please enter the name."
+  ORDER 30
+
+ADD FIELD "Address" OF "BillTo" AS character 
+  FORMAT "x(35)"
+  INITIAL ""
+  LABEL "Address"
+  MAX-WIDTH 70
+  HELP "Please enter the address."
+  ORDER 40
+
+ADD FIELD "Address2" OF "BillTo" AS character 
+  FORMAT "x(35)"
+  INITIAL ""
+  LABEL "Address2"
+  MAX-WIDTH 70
+  HELP "Please enter the address2."
+  ORDER 50
+
+ADD FIELD "City" OF "BillTo" AS character 
+  FORMAT "x(25)"
+  INITIAL ""
+  LABEL "City"
+  MAX-WIDTH 50
+  HELP "Please enter the city"
+  ORDER 60
+
+ADD FIELD "State" OF "BillTo" AS character 
+  DESCRIPTION "Label/Valexp/Valmsg/Help are set based on value of NON-US field!"
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "State"
+  MAX-WIDTH 40
+  HELP "Please enter standard state abbreviation."
+  ORDER 70
+
+ADD FIELD "PostalCode" OF "BillTo" AS character 
+  DESCRIPTION "Format/Label/Help Message based on status of NON-US field."
+  FORMAT "x(10)"
+  INITIAL ""
+  LABEL "Postal Code"
+  MAX-WIDTH 20
+  HELP "Please enter the appropriate postal code."
+  ORDER 80
+
+ADD FIELD "Contact" OF "BillTo" AS character 
+  FORMAT "x(30)"
+  INITIAL ""
+  LABEL "Contact"
+  MAX-WIDTH 60
+  HELP "Please enter the contact."
+  ORDER 90
+
+ADD FIELD "Phone" OF "BillTo" AS character 
+  DESCRIPTION "Format/Label/Help based on status of NON-US field."
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "Phone"
+  MAX-WIDTH 40
+  HELP "Please enter the phone number."
+  ORDER 100
+
+ADD INDEX "CustNumBillTo" ON "BillTo" 
+  AREA "Index Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "CustNum" ASCENDING 
+  INDEX-FIELD "BillToID" ASCENDING 
+
+ADD TABLE "Bin"
+  AREA "Data Area"
+  DESCRIPTION "The bin table is used to represent the bins in each warehouse that contain items."
+  DUMP-NAME "bin"
+  TABLE-TRIGGER "CREATE" NO-OVERRIDE PROCEDURE "OpenEdge/LoadSuite/Common/Triggers/crbin.p" CRC "?" 
+
+ADD FIELD "WarehouseNum" OF "Bin" AS int64 
+  FORMAT "zzzzzzzzz9"
+  INITIAL "0"
+  LABEL "Warehouse Num"
+  MAX-WIDTH 4
+  VALEXP "CAN-FIND(warehouse OF bin)"
+  VALMSG "Warehouse must exist."
+  HELP "Please Enter the Warehouse Number."
+  ORDER 10
+
+ADD FIELD "ItemNum" OF "Bin" AS int64 
+  FORMAT "zzzzzzzzz9"
+  INITIAL "0"
+  LABEL "Item Num"
+  MAX-WIDTH 4
+  VALEXP "CAN-FIND(item OF bin)"
+  VALMSG "Item must be on file"
+  HELP "Please enter an item number."
+  ORDER 20
+
+ADD FIELD "Qty" OF "Bin" AS int64 
+  FORMAT "->>>>9"
+  INITIAL "0"
+  LABEL "Qty"
+  MAX-WIDTH 4
+  HELP "Please enter a quantity."
+  ORDER 30
+
+ADD FIELD "BinNum" OF "Bin" AS int64 
+  FORMAT "zzzzzzzzz9"
+  INITIAL "0"
+  LABEL "Bin Num"
+  MAX-WIDTH 4
+  HELP "Please enter a bin number"
+  ORDER 40
+
+ADD FIELD "BinName" OF "Bin" AS character 
+  FORMAT "x(30)"
+  INITIAL ""
+  LABEL "Bin Name"
+  MAX-WIDTH 60
+  HELP "Please enter a bin name"
+  ORDER 50
+
+ADD INDEX "BinNum" ON "Bin" 
+  AREA "Index Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "BinNum" ASCENDING 
+
+ADD INDEX "ItemNum" ON "Bin" 
+  AREA "Index Area"
+  INDEX-FIELD "ItemNum" ASCENDING 
+
+ADD INDEX "WarehouseNumItemNum" ON "Bin" 
+  AREA "Index Area"
+  INDEX-FIELD "WarehouseNum" ASCENDING 
+  INDEX-FIELD "ItemNum" ASCENDING 
+
+ADD TABLE "Customer"
+  AREA "Data Area"
+  DESCRIPTION "The customer table contains customer  information including  balance and address."
+  DUMP-NAME "customer"
+  TABLE-TRIGGER "CREATE" NO-OVERRIDE PROCEDURE "OpenEdge/LoadSuite/Common/Triggers/crcust.p" CRC "?" 
+  TABLE-TRIGGER "DELETE" NO-OVERRIDE PROCEDURE "OpenEdge/LoadSuite/Common/Triggers/delcust.p" CRC "?" 
+  TABLE-TRIGGER "WRITE" NO-OVERRIDE PROCEDURE "OpenEdge/LoadSuite/Common/Triggers/wrcust.p" CRC "?" 
+
+ADD FIELD "CustNum" OF "Customer" AS int64 
+  FORMAT ">>>>9"
+  INITIAL "0"
+  LABEL "Cust Num"
+  MAX-WIDTH 4
+  VALEXP "custnum > 0"
+  VALMSG "Customer number must be greater than zero"
+  HELP "Please enter a customer number."
+  ORDER 10
+
+ADD FIELD "Name" OF "Customer" AS character 
+  FORMAT "x(30)"
+  INITIAL ""
+  LABEL "Name"
+  MAX-WIDTH 60
+  HELP "Please enter a name."
+  ORDER 30
+
+ADD FIELD "Address" OF "Customer" AS character 
+  FORMAT "x(35)"
+  INITIAL ""
+  LABEL "Address"
+  MAX-WIDTH 70
+  HELP "Please enter an address."
+  ORDER 40
+
+ADD FIELD "Address2" OF "Customer" AS character 
+  FORMAT "x(35)"
+  INITIAL ""
+  LABEL "Address2"
+  MAX-WIDTH 70
+  HELP "Please enter an address."
+  ORDER 50
+
+ADD FIELD "City" OF "Customer" AS character 
+  FORMAT "x(25)"
+  INITIAL ""
+  LABEL "City"
+  MAX-WIDTH 50
+  HELP "Please enter a city."
+  ORDER 60
+
+ADD FIELD "State" OF "Customer" AS character 
+  DESCRIPTION "Label/Valexp/Valmsg/Help are set based on value of NON-US field!"
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "State"
+  MAX-WIDTH 40
+  HELP "Please enter standard state abbreviation."
+  ORDER 70
+
+ADD FIELD "Country" OF "Customer" AS character 
+  FORMAT "x(20)"
+  INITIAL "USA"
+  LABEL "Country"
+  MAX-WIDTH 40
+  HELP "Please enter a country."
+  ORDER 15
+
+ADD FIELD "Phone" OF "Customer" AS character 
+  DESCRIPTION "Format/Label/Help based on status of NON-US field."
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "Phone"
+  MAX-WIDTH 40
+  HELP "Please enter a phone number"
+  ORDER 115
+
+ADD FIELD "Contact" OF "Customer" AS character 
+  FORMAT "x(30)"
+  INITIAL ""
+  LABEL "Contact"
+  MAX-WIDTH 60
+  HELP "Please enter a contact."
+  ORDER 110
+
+ADD FIELD "SalesRep" OF "Customer" AS character 
+  FORMAT "x(4)"
+  INITIAL ""
+  LABEL "Sales Rep"
+  MAX-WIDTH 8
+  VALEXP "CAN-FIND(Salesrep OF Customer)"
+  VALMSG "The Sales Rep's name you've entered must exist in the SalesRep table."
+  HELP "Please Enter a Sales Rep."
+  ORDER 125
+
+ADD FIELD "Comments" OF "Customer" AS character 
+  FORMAT "x(80)"
+  INITIAL ""
+  LABEL "Comments"
+  MAX-WIDTH 160
+  HELP "Please enter comments."
+  ORDER 180
+
+ADD FIELD "CreditLimit" OF "Customer" AS decimal 
+  DESCRIPTION "Maximum credit"
+  FORMAT "->,>>>,>>9"
+  INITIAL "1500"
+  LABEL "Credit Limit"
+  MAX-WIDTH 17
+  VALEXP "CreditLimit >= 0 AND CreditLimit <= 9999999"
+  VALMSG "Credit Limit must be >= 0 and <= 9,999,999"
+  HELP "Please enter a Credit Limit."
+  DECIMALS 2
+  ORDER 130
+
+ADD FIELD "Balance" OF "Customer" AS decimal 
+  FORMAT "->,>>>,>>9.99"
+  INITIAL "0"
+  LABEL "Balance"
+  MAX-WIDTH 17
+  HELP "Please enter a balance."
+  DECIMALS 2
+  ORDER 140
+
+ADD FIELD "Terms" OF "Customer" AS character 
+  FORMAT "x(20)"
+  INITIAL "Net30"
+  LABEL "Terms"
+  MAX-WIDTH 40
+  HELP "Please enter terms"
+  ORDER 150
+
+ADD FIELD "Discount" OF "Customer" AS int64 
+  FORMAT ">>9%"
+  INITIAL "0"
+  LABEL "Discount"
+  MAX-WIDTH 4
+  VALEXP "Discount >= 0"
+  VALMSG "Discount must be greater or equal to 0"
+  HELP "Please enter a percentage from 0 to 100."
+  ORDER 170
+
+ADD FIELD "PostalCode" OF "Customer" AS character 
+  DESCRIPTION "Format/Label/Help Message based on status of NON-US field."
+  FORMAT "x(10)"
+  INITIAL ""
+  LABEL "Postal Code"
+  MAX-WIDTH 20
+  HELP "Please enter the appropriate Postal Code."
+  ORDER 80
+
+ADD FIELD "Fax" OF "Customer" AS character 
+  DESCRIPTION "Format/Label/Help based on status of NON-US field."
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "Fax"
+  MAX-WIDTH 40
+  HELP "Please enter a fax number."
+  ORDER 190
+
+ADD FIELD "EmailAddress" OF "Customer" AS character 
+  FORMAT "x(50)"
+  INITIAL ""
+  LABEL "Email"
+  MAX-WIDTH 100
+  HELP "Please enter an full Internet Email Address."
+  LENGTH 0
+  ORDER 200
+
+ADD INDEX "CustNum" ON "Customer" 
+  AREA "Index Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "CustNum" ASCENDING 
+
+ADD INDEX "Comments" ON "Customer" 
+  AREA "Index Area"
+  WORD
+  INDEX-FIELD "Comments" ASCENDING 
+
+ADD INDEX "CountryPost" ON "Customer" 
+  AREA "Index Area"
+  INDEX-FIELD "Country" ASCENDING 
+  INDEX-FIELD "PostalCode" ASCENDING 
+
+ADD INDEX "Name" ON "Customer" 
+  AREA "Index Area"
+  INDEX-FIELD "Name" ASCENDING 
+
+ADD INDEX "SalesRep" ON "Customer" 
+  AREA "Index Area"
+  INDEX-FIELD "SalesRep" ASCENDING 
+
+ADD TABLE "Department"
+  AREA "Data Area"
+  DESCRIPTION "The department contains a master listing of departments."
+  DUMP-NAME "departme"
+
+ADD FIELD "DeptCode" OF "Department" AS character 
+  FORMAT "x(3)"
+  INITIAL ""
+  LABEL "Dept Code"
+  MAX-WIDTH 6
+  HELP "Please enter the Dept Code."
+  LENGTH 0
+  ORDER 10
+
+ADD FIELD "DeptName" OF "Department" AS character 
+  FORMAT "x(15)"
+  INITIAL ""
+  LABEL "Dept Name"
+  MAX-WIDTH 30
+  HELP "Please enter the Dept Name"
+  LENGTH 0
+  ORDER 20
+
+ADD INDEX "DeptCode" ON "Department" 
+  AREA "Index Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "DeptCode" ASCENDING 
+
+ADD TABLE "Employee"
+  AREA "Data Area"
+  DESCRIPTION "The employee table stores employee information including name and address"
+  DUMP-NAME "employee"
+  TABLE-TRIGGER "CREATE" NO-OVERRIDE PROCEDURE "OpenEdge/LoadSuite/Common/Triggers/cremp.p" CRC "?" 
+  TABLE-TRIGGER "WRITE" NO-OVERRIDE PROCEDURE "OpenEdge/LoadSuite/Common/Triggers/wremp.p" CRC "?" 
+
+ADD FIELD "LastName" OF "Employee" AS character 
+  FORMAT "x(25)"
+  INITIAL ""
+  LABEL "Last Name"
+  MAX-WIDTH 50
+  HELP "Please enter the last name."
+  LENGTH 0
+  ORDER 10
+
+ADD FIELD "FirstName" OF "Employee" AS character 
+  FORMAT "x(15)"
+  INITIAL ""
+  LABEL "First Name"
+  MAX-WIDTH 30
+  HELP "Please enter the First Name."
+  LENGTH 0
+  ORDER 20
+
+ADD FIELD "Address" OF "Employee" AS character 
+  FORMAT "x(35)"
+  INITIAL ""
+  LABEL "Address"
+  MAX-WIDTH 70
+  HELP "Please enter the address"
+  LENGTH 0
+  ORDER 30
+
+ADD FIELD "Address2" OF "Employee" AS character 
+  FORMAT "x(35)"
+  INITIAL ""
+  LABEL "Address2"
+  MAX-WIDTH 70
+  HELP "Please enter the address."
+  LENGTH 0
+  ORDER 40
+
+ADD FIELD "City" OF "Employee" AS character 
+  FORMAT "x(25)"
+  INITIAL ""
+  LABEL "City"
+  MAX-WIDTH 50
+  HELP "Please enter the city."
+  LENGTH 0
+  ORDER 50
+
+ADD FIELD "State" OF "Employee" AS character 
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "State"
+  MAX-WIDTH 40
+  HELP "Please enter a State."
+  LENGTH 0
+  ORDER 60
+
+ADD FIELD "PostalCode" OF "Employee" AS character 
+  FORMAT "x(10)"
+  INITIAL ""
+  LABEL "Postal Code"
+  MAX-WIDTH 20
+  HELP "Please enter the Postal Code."
+  LENGTH 0
+  ORDER 70
+
+ADD FIELD "DeptCode" OF "Employee" AS character 
+  FORMAT "x(3)"
+  INITIAL ""
+  LABEL "Dept Code"
+  MAX-WIDTH 6
+  VALEXP "CAN-FIND(department of employee)"
+  VALMSG "Department must exist."
+  HELP "Please enter the Dept Code"
+  LENGTH 0
+  ORDER 80
+
+ADD FIELD "Position" OF "Employee" AS character 
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "Position"
+  MAX-WIDTH 40
+  HELP "Please enter the position."
+  LENGTH 0
+  ORDER 90
+
+ADD FIELD "HomePhone" OF "Employee" AS character 
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "Home Phone"
+  MAX-WIDTH 40
+  HELP "Please enter the home phone."
+  LENGTH 0
+  ORDER 75
+
+ADD FIELD "WorkPhone" OF "Employee" AS character 
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "Work Phone"
+  MAX-WIDTH 40
+  HELP "Please enter work phone number"
+  LENGTH 0
+  ORDER 76
+
+ADD FIELD "VacationDaysLeft" OF "Employee" AS int64 
+  FORMAT ">>9"
+  INITIAL "0"
+  LABEL "Vacation Days Left"
+  MAX-WIDTH 4
+  HELP "Please enter Vacation Days Left."
+  ORDER 100
+
+ADD FIELD "SickDaysLeft" OF "Employee" AS int64 
+  FORMAT ">>9"
+  INITIAL "0"
+  LABEL "Sick Days Left"
+  MAX-WIDTH 4
+  HELP "Please enter Sick Days Left."
+  ORDER 110
+
+ADD FIELD "EmpNum" OF "Employee" AS int64 
+  FORMAT "zzzzzzzzz9"
+  INITIAL "0"
+  LABEL "Emp No"
+  MAX-WIDTH 4
+  HELP "Please enter the Emp Num"
+  ORDER 5
+
+ADD FIELD "StartDate" OF "Employee" AS date 
+  FORMAT "99/99/9999"
+  INITIAL ?
+  LABEL "Start Date"
+  MAX-WIDTH 4
+  HELP "Please enter a Start Date"
+  ORDER 98
+
+ADD FIELD "BirthDate" OF "Employee" AS date 
+  FORMAT "99/99/9999"
+  INITIAL ?
+  LABEL "Birthdate"
+  MAX-WIDTH 4
+  HELP "Please enter the birth date."
+  ORDER 97
+
+ADD INDEX "EmpNo" ON "Employee" 
+  AREA "Index Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "EmpNum" ASCENDING 
+
+ADD INDEX "DeptCode" ON "Employee" 
+  AREA "Index Area"
+  INDEX-FIELD "DeptCode" ASCENDING 
+
+ADD INDEX "Name" ON "Employee" 
+  AREA "Index Area"
+  UNIQUE
+  INDEX-FIELD "LastName" ASCENDING 
+  INDEX-FIELD "FirstName" ASCENDING 
+
+ADD TABLE "Family"
+  AREA "Data Area"
+  DESCRIPTION "The family table tracks an employee's family"
+  DUMP-NAME "family"
+
+ADD FIELD "RelativeName" OF "Family" AS character 
+  FORMAT "x(15)"
+  INITIAL ""
+  LABEL "Relative Name"
+  MAX-WIDTH 30
+  HELP "Please enter the Relative Name"
+  LENGTH 0
+  ORDER 10
+
+ADD FIELD "Relation" OF "Family" AS character 
+  FORMAT "x(15)"
+  INITIAL ""
+  LABEL "Relation"
+  MAX-WIDTH 30
+  HELP "Please enter Spouse or Child."
+  LENGTH 0
+  ORDER 20
+
+ADD FIELD "BirthDate" OF "Family" AS date 
+  FORMAT "99/99/9999"
+  INITIAL ?
+  LABEL "BirthDate"
+  MAX-WIDTH 4
+  HELP "Please enter a BirthDate"
+  ORDER 30
+
+ADD FIELD "BenefitDate" OF "Family" AS date 
+  FORMAT "99/99/9999"
+  INITIAL ?
+  LABEL "Benefit Date"
+  MAX-WIDTH 4
+  HELP "Please enter the Date relative added to benefits."
+  ORDER 40
+
+ADD FIELD "CoveredOnBenefits" OF "Family" AS logical 
+  FORMAT "yes/no"
+  INITIAL "no"
+  LABEL "Covered On Benefits"
+  MAX-WIDTH 1
+  HELP "Please enter the Covered on Benefits field."
+  ORDER 35
+
+ADD FIELD "EmpNum" OF "Family" AS int64 
+  FORMAT "zzzzzzzzz9"
+  INITIAL "0"
+  LABEL "Emp No"
+  MAX-WIDTH 4
+  VALEXP "CAN-FIND(employee OF family)"
+  VALMSG "Employee must exist."
+  HELP "Please enter the Emp Num."
+  ORDER 5
+
+ADD INDEX "EmpNoRelativeName" ON "Family" 
+  AREA "Index Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "EmpNum" ASCENDING 
+  INDEX-FIELD "RelativeName" ASCENDING 
+
+ADD TABLE "Feedback"
+  AREA "Data Area"
+  DESCRIPTION "The feedback table allows customers to provide feedback about what they like and don't like."
+  DUMP-NAME "feedback"
+
+ADD FIELD "Contact" OF "Feedback" AS character 
+  FORMAT "x(30)"
+  INITIAL ""
+  LABEL "Contact Name"
+  MAX-WIDTH 60
+  HELP "Please enter the contact"
+  LENGTH 0
+  ORDER 10
+
+ADD FIELD "Company" OF "Feedback" AS character 
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "Company"
+  MAX-WIDTH 40
+  HELP "Please enter the company"
+  LENGTH 0
+  ORDER 20
+
+ADD FIELD "EmailAddress" OF "Feedback" AS character 
+  FORMAT "x(50)"
+  INITIAL ""
+  LABEL "Email"
+  MAX-WIDTH 100
+  HELP "Please enter the email address."
+  LENGTH 0
+  ORDER 30
+
+ADD FIELD "Phone" OF "Feedback" AS character 
+  DESCRIPTION "Format/Label/Help based on status of NON-US field."
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "Phone"
+  MAX-WIDTH 40
+  HELP "Please enter the phone."
+  LENGTH 0
+  ORDER 40
+
+ADD FIELD "Fax" OF "Feedback" AS character 
+  DESCRIPTION "Format/Label/Help based on status of NON-US field."
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "Fax"
+  MAX-WIDTH 40
+  HELP "Please enter the fax."
+  LENGTH 0
+  ORDER 50
+
+ADD FIELD "Comments" OF "Feedback" AS character 
+  FORMAT "x(80)"
+  INITIAL ""
+  LABEL "Comments"
+  MAX-WIDTH 160
+  VIEW-AS "VIEW-AS EDITOR SIZE 41 BY 5 SCROLLBAR-VERTICAL "
+  HELP "Please enter comments."
+  LENGTH 0
+  ORDER 60
+
+ADD FIELD "Department" OF "Feedback" AS character 
+  FORMAT "x(15)"
+  INITIAL ""
+  LABEL "Department"
+  MAX-WIDTH 30
+  HELP "Please enter the department."
+  LENGTH 0
+  ORDER 70
+
+ADD FIELD "Rating" OF "Feedback" AS int64 
+  FORMAT "9"
+  INITIAL "0"
+  LABEL "Rating"
+  MAX-WIDTH 4
+  VIEW-AS "VIEW-AS RADIO-SET
+  RADIO-BUTTONS ""Very Good"", 5, ""Good"", 4, ""Satisfactory"", 3, ""Needs Improvement"", 2, ""Poor"", 1"
+  HELP "Please enter the rating"
+  ORDER 80
+
+ADD INDEX "Department" ON "Feedback" 
+  AREA "Index Area"
+  PRIMARY
+  INDEX-FIELD "Department" ASCENDING 
+
+ADD INDEX "Comments" ON "Feedback" 
+  AREA "Index Area"
+  WORD
+  INDEX-FIELD "Comments" ASCENDING 
+
+ADD INDEX "Company" ON "Feedback" 
+  AREA "Index Area"
+  WORD
+  INDEX-FIELD "Company" ASCENDING 
+
+ADD INDEX "Contact" ON "Feedback" 
+  AREA "Index Area"
+  WORD
+  INDEX-FIELD "Contact" ASCENDING 
+
+ADD INDEX "Rating" ON "Feedback" 
+  AREA "Index Area"
+  INDEX-FIELD "Rating" ASCENDING 
+
+ADD TABLE "InventoryTrans"
+  AREA "Data Area"
+  DESCRIPTION "The inventorytrans table contains information about the movement of inventory."
+  DUMP-NAME "inventor"
+  TABLE-TRIGGER "CREATE" NO-OVERRIDE PROCEDURE "OpenEdge/LoadSuite/Common/Triggers/crinvtx.p" CRC "?" 
+
+ADD FIELD "InvTransNum" OF "InventoryTrans" AS int64 
+  FORMAT "zzzzzzzzz9"
+  INITIAL "0"
+  LABEL "Inventory Trans Num"
+  MAX-WIDTH 4
+  HELP "Please enter an inventory trans number"
+  ORDER 10
+
+ADD FIELD "WarehouseNum" OF "InventoryTrans" AS int64 
+  FORMAT "zzzzzzzzz9"
+  INITIAL "0"
+  LABEL "Warehouse Num"
+  MAX-WIDTH 4
+  HELP "Please enter the Warehouse Number."
+  ORDER 20
+
+ADD FIELD "BinNum" OF "InventoryTrans" AS int64 
+  FORMAT "zzzzzzzzz9"
+  INITIAL "0"
+  LABEL "Bin Num"
+  MAX-WIDTH 4
+  HELP "Please enter a bin number."
+  ORDER 30
+
+ADD FIELD "Qty" OF "InventoryTrans" AS int64 
+  FORMAT "->>>>9"
+  INITIAL "0"
+  LABEL "Qty"
+  MAX-WIDTH 4
+  HELP "Please enter the quantity."
+  ORDER 40
+
+ADD FIELD "ItemNum" OF "InventoryTrans" AS int64 
+  FORMAT "zzzzzzzzz9"
+  INITIAL "0"
+  LABEL "Item Num"
+  MAX-WIDTH 4
+  VALEXP "CAN-FIND(item OF inventorytrans)"
+  VALMSG "Item must be on file."
+  HELP "Please enter an item number"
+  ORDER 50
+
+ADD FIELD "TransDate" OF "InventoryTrans" AS date 
+  FORMAT "99/99/9999"
+  INITIAL ?
+  LABEL "Trans Date"
+  MAX-WIDTH 4
+  HELP "Please enter the trans date."
+  ORDER 60
+
+ADD FIELD "InvType" OF "InventoryTrans" AS character 
+  FORMAT "X(12)"
+  INITIAL ""
+  LABEL "Type"
+  MAX-WIDTH 24
+  HELP "Please enter the type."
+  ORDER 70
+
+ADD FIELD "PONum" OF "InventoryTrans" AS int64 
+  FORMAT "zzzzzzzzz9"
+  INITIAL "0"
+  LABEL "PO Num"
+  MAX-WIDTH 4
+  HELP "Please enter a PO Number."
+  ORDER 80
+
+ADD FIELD "OrderNum" OF "InventoryTrans" AS int64 
+  FORMAT "zzzzzzzzz9"
+  INITIAL "0"
+  LABEL "Order Num"
+  MAX-WIDTH 4
+  HELP "Please Enter an Order Number"
+  ORDER 90
+
+ADD FIELD "TransTime" OF "InventoryTrans" AS character 
+  FORMAT "X(5)"
+  INITIAL ""
+  LABEL "Trans Time"
+  MAX-WIDTH 10
+  ORDER 100
+
+ADD INDEX "InvTransNum" ON "InventoryTrans" 
+  AREA "Index Area"
+  PRIMARY
+  INDEX-FIELD "InvTransNum" ASCENDING 
+
+ADD TABLE "Invoice"
+  AREA "Data Area"
+  DESCRIPTION "The invoice table contains transactions for the receivable module."
+  DUMP-NAME "invoice"
+  TABLE-TRIGGER "CREATE" NO-OVERRIDE PROCEDURE "OpenEdge/LoadSuite/Common/Triggers/crinv.p" CRC "?" 
+  TABLE-TRIGGER "DELETE" NO-OVERRIDE PROCEDURE "OpenEdge/LoadSuite/Common/Triggers/delinv.p" CRC "?" 
+
+ADD FIELD "InvoiceNum" OF "Invoice" AS int64 
+  FORMAT "zzzzzzzzz9"
+  INITIAL "0"
+  LABEL "Invoice Num"
+  MAX-WIDTH 4
+  VALEXP "invoicenum > 0"
+  VALMSG "Invoice number cannot be zero"
+  HELP "Please enter an Invoice Number"
+  ORDER 10
+
+ADD FIELD "CustNum" OF "Invoice" AS int64 
+  FORMAT ">>>>9"
+  INITIAL "0"
+  LABEL "Cust Num"
+  MAX-WIDTH 4
+  VALEXP "CAN-FIND(customer OF invoice)"
+  VALMSG "The Customer number entered must be a valid one."
+  HELP "Please enter a customer number."
+  ORDER 20
+
+ADD FIELD "InvoiceDate" OF "Invoice" AS date 
+  FORMAT "99/99/9999"
+  INITIAL ?
+  LABEL "Invoice Date"
+  MAX-WIDTH 4
+  HELP "Please enter an invoice date"
+  ORDER 30
+
+ADD FIELD "Amount" OF "Invoice" AS decimal 
+  FORMAT "->>,>>9.99"
+  INITIAL "0"
+  LABEL "Amount"
+  MAX-WIDTH 17
+  HELP "Please enter total invoice amt including shipping and sales."
+  DECIMALS 2
+  ORDER 40
+
+ADD FIELD "TotalPaid" OF "Invoice" AS decimal 
+  FORMAT "->>,>>9.99"
+  INITIAL "0"
+  LABEL "Total Paid"
+  MAX-WIDTH 17
+  HELP "Please enter Total Paid."
+  DECIMALS 2
+  ORDER 50
+
+ADD FIELD "Adjustment" OF "Invoice" AS decimal 
+  FORMAT "->>,>>9.99"
+  INITIAL "0"
+  LABEL "Adjustment"
+  MAX-WIDTH 17
+  HELP "Please enter adjustment."
+  DECIMALS 2
+  ORDER 60
+
+ADD FIELD "OrderNum" OF "Invoice" AS int64 
+  FORMAT "zzzzzzzzz9"
+  INITIAL "0"
+  LABEL "Order Num"
+  MAX-WIDTH 4
+  VALMSG "The Order number entered must be a valid one."
+  HELP "Please enter an order number."
+  ORDER 80
+
+ADD FIELD "ShipCharge" OF "Invoice" AS decimal 
+  FORMAT "->>,>>9.99"
+  INITIAL "0"
+  LABEL "Ship Charge"
+  MAX-WIDTH 17
+  HELP "Please enter a Ship Charge."
+  DECIMALS 2
+  ORDER 120
+
+ADD INDEX "InvoiceNum" ON "Invoice" 
+  AREA "Index Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "InvoiceNum" ASCENDING 
+
+ADD INDEX "CustNum" ON "Invoice" 
+  AREA "Index Area"
+  INDEX-FIELD "CustNum" ASCENDING 
+
+ADD INDEX "InvoiceDate" ON "Invoice" 
+  AREA "Index Area"
+  INDEX-FIELD "InvoiceDate" ASCENDING 
+
+ADD INDEX "OrderNum" ON "Invoice" 
+  AREA "Index Area"
+  INDEX-FIELD "OrderNum" ASCENDING 
+
+ADD TABLE "Item"
+  AREA "Data Area"
+  DESCRIPTION "The item table provides a quick reference for items in stock and quantity on-hand."
+  VALEXP "NOT (CAN-FIND(FIRST orderline OF item))"
+  VALMSG "Cannot delete Item, order-line records exist with this item"
+  DUMP-NAME "item"
+  TABLE-TRIGGER "CREATE" NO-OVERRIDE PROCEDURE "OpenEdge/LoadSuite/Common/Triggers/critem.p" CRC "?" 
+  TABLE-TRIGGER "DELETE" NO-OVERRIDE PROCEDURE "OpenEdge/LoadSuite/Common/Triggers/delitem.p" CRC "?" 
+  TABLE-TRIGGER "WRITE" NO-OVERRIDE PROCEDURE "OpenEdge/LoadSuite/Common/Triggers/writem.p" CRC "?" 
+
+ADD FIELD "ItemNum" OF "Item" AS int64 
+  FORMAT "zzzzzzzzz9"
+  INITIAL "0"
+  LABEL "Item Num"
+  MAX-WIDTH 4
+  VALEXP "itemnum >= 0"
+  VALMSG "Item number must be greater or equal to 0"
+  HELP "Please enter the item  number ."
+  ORDER 10
+
+ADD FIELD "ItemName" OF "Item" AS character 
+  FORMAT "x(25)"
+  INITIAL ""
+  LABEL "Item Name"
+  MAX-WIDTH 50
+  HELP "Please enter an item name."
+  ORDER 20
+
+ADD FIELD "CatPage" OF "Item" AS int64 
+  FORMAT ">>9"
+  INITIAL "0"
+  LABEL "Cat Page"
+  MAX-WIDTH 4
+  HELP "Please enter a catalog page"
+  ORDER 80
+
+ADD FIELD "Price" OF "Item" AS decimal 
+  FORMAT "->,>>>,>>9.99"
+  INITIAL "0"
+  LABEL "Price"
+  MAX-WIDTH 17
+  HELP "Please enter a Price."
+  DECIMALS 2
+  ORDER 30
+
+ADD FIELD "CatDescription" OF "Item" AS character 
+  FORMAT "X(200)"
+  INITIAL ""
+  LABEL "Cat-Description"
+  MAX-WIDTH 400
+  VIEW-AS "VIEW-AS EDITOR SIZE 41 by 5 SCROLLBAR-VERTICAL "
+  HELP "Please enter a description."
+  ORDER 90
+
+ADD FIELD "OnHand" OF "Item" AS int64 
+  FORMAT "->>>>9"
+  INITIAL "0"
+  LABEL "On Hand"
+  MAX-WIDTH 4
+  HELP "Please enter On Hand Qty"
+  ORDER 40
+
+ADD FIELD "Allocated" OF "Item" AS int64 
+  FORMAT "->>>>9"
+  INITIAL "0"
+  LABEL "Allocated"
+  MAX-WIDTH 4
+  HELP "Please enter allocated"
+  ORDER 50
+
+ADD FIELD "ReOrder" OF "Item" AS int64 
+  FORMAT "->>>>9"
+  INITIAL "0"
+  LABEL "Re Order"
+  MAX-WIDTH 4
+  HELP "Please enter reorder qty"
+  ORDER 60
+
+ADD FIELD "OnOrder" OF "Item" AS int64 
+  FORMAT "->>>>9"
+  INITIAL "0"
+  LABEL "On Order"
+  MAX-WIDTH 4
+  HELP "Please enter On Order Qty"
+  ORDER 70
+
+ADD FIELD "Category1" OF "Item" AS character 
+  FORMAT "x(30)"
+  INITIAL ""
+  LABEL "Category1"
+  MAX-WIDTH 60
+  HELP "Please enter a category"
+  LENGTH 0
+  ORDER 100
+
+ADD FIELD "Category2" OF "Item" AS character 
+  FORMAT "x(30)"
+  INITIAL ""
+  LABEL "Category2"
+  MAX-WIDTH 60
+  HELP "Please enter a category"
+  LENGTH 0
+  ORDER 110
+
+ADD FIELD "Special" OF "Item" AS character 
+  FORMAT "x(8)"
+  INITIAL ""
+  LABEL "Special"
+  MAX-WIDTH 16
+  HELP "Please enter special information"
+  LENGTH 0
+  ORDER 120
+
+ADD FIELD "Weight" OF "Item" AS decimal 
+  FORMAT "->>,>>9.99"
+  INITIAL "0"
+  LABEL "Weight"
+  MAX-WIDTH 17
+  HELP "Please enter weight."
+  DECIMALS 2
+  ORDER 130
+
+ADD FIELD "MinQty" OF "Item" AS int64 
+  FORMAT "->>>>9"
+  INITIAL "0"
+  LABEL "Min Qty"
+  MAX-WIDTH 4
+  HELP "Please enter a min qty"
+  ORDER 140
+
+ADD FIELD "ItemImage" OF "Item" AS blob 
+  FORMAT "x(8)"
+  INITIAL ?
+  LOB-AREA "LOB Area"
+  LOB-BYTES 10485760
+  LOB-SIZE 10M
+  ORDER 150
+
+ADD INDEX "ItemNum" ON "Item" 
+  AREA "Index Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "ItemNum" ASCENDING 
+
+ADD INDEX "CatDescription" ON "Item" 
+  AREA "Index Area"
+  WORD
+  INDEX-FIELD "CatDescription" ASCENDING 
+
+ADD INDEX "Category2ItemName" ON "Item" 
+  AREA "Index Area"
+  INDEX-FIELD "Category2" ASCENDING 
+  INDEX-FIELD "ItemName" ASCENDING 
+
+ADD INDEX "CategoryItemName" ON "Item" 
+  AREA "Index Area"
+  INDEX-FIELD "Category1" ASCENDING 
+  INDEX-FIELD "ItemName" ASCENDING 
+
+ADD INDEX "ItemName" ON "Item" 
+  AREA "Index Area"
+  WORD
+  INDEX-FIELD "ItemName" ASCENDING 
+
+ADD TABLE "LocalDefault"
+  AREA "Data Area"
+  DESCRIPTION "The local default table contains default information for the application."
+  VALEXP "NOT (CAN-FIND(FIRST Customer WHERE Customer.Country =
+   LocalDefault.Country))"
+  VALMSG "This record cannot be deleted if used in at least one Customer record."
+  DUMP-NAME "localdef"
+  TABLE-TRIGGER "CREATE" NO-OVERRIDE PROCEDURE "OpenEdge/LoadSuite/Common/Triggers/crlocdef.p" CRC "?" 
+
+ADD FIELD "Country" OF "LocalDefault" AS character 
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "Country"
+  MAX-WIDTH 40
+  HELP "Please enter the Country."
+  ORDER 10
+
+ADD FIELD "Region1Label" OF "LocalDefault" AS character 
+  FORMAT "x(15)"
+  INITIAL ""
+  LABEL "Region1 Label"
+  MAX-WIDTH 30
+  HELP "Please enter region one label"
+  ORDER 20
+
+ADD FIELD "Region2Label" OF "LocalDefault" AS character 
+  FORMAT "x(15)"
+  INITIAL ""
+  LABEL "Region2 Label"
+  MAX-WIDTH 30
+  HELP "Please enter region two label."
+  ORDER 30
+
+ADD FIELD "PostalLabel" OF "LocalDefault" AS character 
+  FORMAT "x(15)"
+  INITIAL ""
+  LABEL "Postal Label"
+  MAX-WIDTH 30
+  HELP "Please enter the Postal Label"
+  ORDER 40
+
+ADD FIELD "PostalFormat" OF "LocalDefault" AS character 
+  FORMAT "x(15)"
+  INITIAL ""
+  LABEL "Postal Format"
+  MAX-WIDTH 30
+  HELP "Please enter the Postal Format"
+  ORDER 50
+
+ADD FIELD "TelFormat" OF "LocalDefault" AS character 
+  FORMAT "x(15)"
+  INITIAL ""
+  LABEL "Tel Format"
+  MAX-WIDTH 30
+  HELP "Please enter telephone format."
+  ORDER 60
+
+ADD FIELD "DateFormat" OF "LocalDefault" AS character 
+  FORMAT "x(8)"
+  INITIAL "MDY"
+  LABEL "Date Format"
+  MAX-WIDTH 16
+  HELP "Please enter the date format."
+  ORDER 80
+
+ADD FIELD "CurrencySymbol" OF "LocalDefault" AS character 
+  FORMAT "x(6)"
+  INITIAL ""
+  LABEL "Currency Symbol"
+  MAX-WIDTH 12
+  HELP "Please enter the currency symbol"
+  ORDER 70
+
+ADD FIELD "LocalDefNum" OF "LocalDefault" AS int64 
+  FORMAT "zzzzzzzzz9"
+  INITIAL "0"
+  LABEL "Local Default Num"
+  MAX-WIDTH 4
+  HELP "Please enter the Local Default Number."
+  ORDER 90
+
+ADD INDEX "LocalDefNum" ON "LocalDefault" 
+  AREA "Index Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "LocalDefNum" ASCENDING 
+
+ADD TABLE "Order"
+  AREA "Data Area"
+  DESCRIPTION "The order table contains order header information."
+  VALEXP "1 = 1"
+  DUMP-NAME "order"
+  TABLE-TRIGGER "CREATE" NO-OVERRIDE PROCEDURE "OpenEdge/LoadSuite/Common/Triggers/crord.p" CRC "?" 
+  TABLE-TRIGGER "DELETE" NO-OVERRIDE PROCEDURE "OpenEdge/LoadSuite/Common/Triggers/delord.p" CRC "?" 
+  TABLE-TRIGGER "WRITE" NO-OVERRIDE PROCEDURE "OpenEdge/LoadSuite/Common/Triggers/wrord.p" CRC "?" 
+
+ADD FIELD "OrderNum" OF "Order" AS int64 
+  FORMAT "zzzzzzzzz9"
+  INITIAL "0"
+  LABEL "Order Num"
+  MAX-WIDTH 4
+  VALEXP "ordernum > 0"
+  VALMSG "Order number must be greater than zero"
+  HELP "Please enter an order number."
+  ORDER 10
+
+ADD FIELD "CustNum" OF "Order" AS int64 
+  DESCRIPTION "Customer Number"
+  FORMAT ">>>>9"
+  INITIAL "0"
+  LABEL "Cust Num"
+  MAX-WIDTH 4
+  VALEXP "CAN-FIND(customer OF order)"
+  VALMSG "Customer must already exist."
+  HELP "Please enter an existing customer number."
+  ORDER 20
+
+ADD FIELD "OrderDate" OF "Order" AS date 
+  FORMAT "99/99/99"
+  INITIAL "TODAY"
+  LABEL "Ordered"
+  MAX-WIDTH 4
+  HELP "Please enter the date of order."
+  ORDER 90
+
+ADD FIELD "ShipDate" OF "Order" AS date 
+  FORMAT "99/99/9999"
+  INITIAL ?
+  LABEL "Shipped"
+  MAX-WIDTH 4
+  HELP "Please enter the ship date."
+  ORDER 100
+
+ADD FIELD "PromiseDate" OF "Order" AS date 
+  FORMAT "99/99/99"
+  INITIAL ?
+  LABEL "Promised"
+  MAX-WIDTH 4
+  HELP "Please enter the Promise Date."
+  ORDER 110
+
+ADD FIELD "Carrier" OF "Order" AS character 
+  DESCRIPTION "Should lookup valid carriers."
+  FORMAT "x(25)"
+  INITIAL ""
+  LABEL "Carrier"
+  MAX-WIDTH 50
+  HELP "Please enter the carrier."
+  ORDER 120
+
+ADD FIELD "Instructions" OF "Order" AS character 
+  FORMAT "x(50)"
+  INITIAL ""
+  LABEL "Instructions"
+  MAX-WIDTH 100
+  HELP "Please enter Instructions"
+  ORDER 130
+
+ADD FIELD "PO" OF "Order" AS character 
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "PO"
+  MAX-WIDTH 40
+  HELP "Please enter the PO."
+  ORDER 140
+
+ADD FIELD "Terms" OF "Order" AS character 
+  DESCRIPTION "This should default to the TERMS specified by the CUSTOMER record."
+  FORMAT "x(20)"
+  INITIAL "Net30"
+  LABEL "Terms"
+  MAX-WIDTH 40
+  HELP "Please enter the terms."
+  ORDER 150
+
+ADD FIELD "SalesRep" OF "Order" AS character 
+  FORMAT "x(4)"
+  INITIAL ""
+  LABEL "Sales Rep"
+  MAX-WIDTH 8
+  HELP "Please enter the Sales Rep."
+  ORDER 160
+
+ADD FIELD "BillToID" OF "Order" AS int64 
+  FORMAT "zzzzzzzzz9"
+  INITIAL "0"
+  LABEL "Bill To ID"
+  MAX-WIDTH 4
+  HELP "Please enter the BillTo ID."
+  ORDER 170
+
+ADD FIELD "ShipToID" OF "Order" AS int64 
+  FORMAT "zzzzzzzzz9"
+  INITIAL "0"
+  LABEL "Ship To ID"
+  MAX-WIDTH 4
+  HELP "Please enter the ShipToID."
+  ORDER 180
+
+ADD FIELD "OrderStatus" OF "Order" AS character 
+  FORMAT "x(20)"
+  INITIAL "Ordered"
+  LABEL "Order Status"
+  MAX-WIDTH 40
+  VIEW-AS "VIEW-AS COMBO-BOX LIST-ITEMS ""Ordered"", ""Back Ordered"", ""Partially Shipped"", ""Shipped"""
+  HELP "Please enter the Order Status."
+  ORDER 190
+
+ADD FIELD "WarehouseNum" OF "Order" AS int64 
+  FORMAT "zzzzzzzzz9"
+  INITIAL "0"
+  LABEL "Warehouse Num"
+  MAX-WIDTH 4
+  VALEXP "(warehousenum = 0) or can-find(warehouse of order)"
+  VALMSG "Enter a number greater than zero"
+  HELP "Please enter the Warehouse Number."
+  ORDER 200
+
+ADD FIELD "CreditCard" OF "Order" AS character 
+  FORMAT "x(20)"
+  INITIAL "Visa"
+  LABEL "Credit Card"
+  MAX-WIDTH 40
+  VIEW-AS "VIEW-AS COMBO-BOX LIST-ITEMS ""Visa"", ""American Express"", ""Master Card"""
+  HELP "Please enter the credit card."
+  ORDER 210
+
+ADD INDEX "OrderNum" ON "Order" 
+  AREA "Index Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "OrderNum" ASCENDING 
+
+ADD INDEX "CustOrder" ON "Order" 
+  AREA "Index Area"
+  UNIQUE
+  INDEX-FIELD "CustNum" ASCENDING 
+  INDEX-FIELD "OrderNum" ASCENDING 
+
+ADD INDEX "OrderDate" ON "Order" 
+  AREA "Index Area"
+  INDEX-FIELD "OrderDate" ASCENDING 
+
+ADD INDEX "OrderStatus" ON "Order" 
+  AREA "Index Area"
+  INDEX-FIELD "OrderStatus" ASCENDING 
+
+ADD INDEX "SalesRep" ON "Order" 
+  AREA "Index Area"
+  INDEX-FIELD "SalesRep" ASCENDING 
+
+ADD TABLE "OrderLine"
+  AREA "Data Area"
+  DESCRIPTION "The orderline table contains order detail information including item number and quantity ordered."
+  DUMP-NAME "orderlin"
+  TABLE-TRIGGER "CREATE" NO-OVERRIDE PROCEDURE "OpenEdge/LoadSuite/Common/Triggers/crordl.p" CRC "?" 
+  TABLE-TRIGGER "DELETE" NO-OVERRIDE PROCEDURE "OpenEdge/LoadSuite/Common/Triggers/delordl.p" CRC "?" 
+  TABLE-TRIGGER "WRITE" NO-OVERRIDE PROCEDURE "OpenEdge/LoadSuite/Common/Triggers/wrordl.p" CRC "?" 
+
+ADD FIELD "OrderNum" OF "OrderLine" AS int64 
+  FORMAT "zzzzzzzzz9"
+  INITIAL "0"
+  LABEL "Order Num"
+  MAX-WIDTH 4
+  VALEXP "CAN-FIND(order OF orderline)"
+  VALMSG "Order must exist"
+  HELP "Please enter and Order Number for this order line."
+  ORDER 10
+
+ADD FIELD "LineNum" OF "OrderLine" AS int64 
+  DESCRIPTION "To be generated automatically by key value generator!"
+  FORMAT ">>9"
+  INITIAL "0"
+  LABEL "Line Num"
+  MAX-WIDTH 4
+  HELP "Please enter the line number"
+  ORDER 20
+
+ADD FIELD "ItemNum" OF "OrderLine" AS int64 
+  DESCRIPTION "                                                      Help:Idesc"
+  FORMAT "zzzzzzzzz9"
+  INITIAL "0"
+  LABEL "Item Num"
+  MAX-WIDTH 4
+  VALEXP "CAN-FIND(item OF orderline)"
+  VALMSG "Item must be on file"
+  HELP "Please enter an item number."
+  ORDER 30
+
+ADD FIELD "Price" OF "OrderLine" AS decimal 
+  DESCRIPTION "This field should get its default from the ITEM file's price field."
+  FORMAT "->,>>>,>>9.99"
+  INITIAL "0"
+  LABEL "Price"
+  MAX-WIDTH 17
+  HELP "Please enter the price"
+  DECIMALS 2
+  ORDER 40
+
+ADD FIELD "Qty" OF "OrderLine" AS int64 
+  FORMAT "->>>>9"
+  INITIAL "0"
+  LABEL "Qty"
+  MAX-WIDTH 4
+  HELP "Please enter the quantity."
+  ORDER 50
+
+ADD FIELD "Discount" OF "OrderLine" AS int64 
+  FORMAT ">>9%"
+  INITIAL "0"
+  LABEL "Discount"
+  MAX-WIDTH 4
+  HELP "Please enter a discount."
+  ORDER 70
+
+ADD FIELD "ExtendedPrice" OF "OrderLine" AS decimal 
+  FORMAT "->>>,>>9.99"
+  INITIAL "0"
+  LABEL "Extended Price"
+  MAX-WIDTH 17
+  HELP "Please enter the extended price"
+  DECIMALS 2
+  ORDER 80
+
+ADD FIELD "OrderLineStatus" OF "OrderLine" AS character 
+  FORMAT "x(20)"
+  INITIAL "Ordered"
+  LABEL "Order Line Status"
+  MAX-WIDTH 40
+  VIEW-AS "VIEW-AS COMBO-BOX LIST-ITEMS ""Ordered"",""Back Ordered"",""Shipped"""
+  HELP "Please enter the order line status."
+  ORDER 110
+
+ADD INDEX "OrderLine" ON "OrderLine" 
+  AREA "Index Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "OrderNum" ASCENDING 
+  INDEX-FIELD "LineNum" ASCENDING 
+
+ADD INDEX "ItemNum" ON "OrderLine" 
+  AREA "Index Area"
+  INDEX-FIELD "ItemNum" ASCENDING 
+
+ADD INDEX "OrderLineStatus" ON "OrderLine" 
+  AREA "Index Area"
+  INDEX-FIELD "OrderLineStatus" ASCENDING 
+
+ADD TABLE "POLine"
+  AREA "Data Area"
+  DESCRIPTION "The poline table contains the PO detail information including the item and quantity on the PO."
+  DUMP-NAME "poline"
+
+ADD FIELD "LineNum" OF "POLine" AS int64 
+  DESCRIPTION "To be generated automatically by key value generator!"
+  FORMAT ">>9"
+  INITIAL "0"
+  LABEL "Line Num"
+  MAX-WIDTH 4
+  HELP "Please enter the Line Number"
+  ORDER 20
+
+ADD FIELD "ItemNum" OF "POLine" AS int64 
+  DESCRIPTION "                                                      Help:Idesc"
+  FORMAT "zzzzzzzzz9"
+  INITIAL "0"
+  LABEL "Item Num"
+  MAX-WIDTH 4
+  VALEXP "CAN-FIND(item OF poline)"
+  VALMSG "Item must be on file"
+  HELP "Please enter an item number."
+  ORDER 30
+
+ADD FIELD "Price" OF "POLine" AS decimal 
+  DESCRIPTION "This field should get its default from the ITEM file's price field."
+  FORMAT "->,>>>,>>9.99"
+  INITIAL "0"
+  LABEL "Price"
+  MAX-WIDTH 17
+  HELP "Please enter the Price"
+  DECIMALS 2
+  ORDER 40
+
+ADD FIELD "Qty" OF "POLine" AS int64 
+  FORMAT "->>>>9"
+  INITIAL "0"
+  LABEL "Qty"
+  MAX-WIDTH 4
+  HELP "Please enter the quantity."
+  ORDER 50
+
+ADD FIELD "Discount" OF "POLine" AS int64 
+  FORMAT ">>9%"
+  INITIAL "0"
+  LABEL "Discount"
+  MAX-WIDTH 4
+  HELP "Please enter the discount."
+  ORDER 70
+
+ADD FIELD "ExtendedPrice" OF "POLine" AS decimal 
+  FORMAT "->>,>>9.99"
+  INITIAL "0"
+  LABEL "Extended Price"
+  MAX-WIDTH 17
+  HELP "Please enter the Extended Price."
+  DECIMALS 2
+  ORDER 80
+
+ADD FIELD "PONum" OF "POLine" AS int64 
+  FORMAT "zzzzzzzzz9"
+  INITIAL "0"
+  LABEL "Order Num"
+  MAX-WIDTH 4
+  VALEXP "can-find(purchaseorder of poline)"
+  VALMSG "Purchase order must exist."
+  HELP "Please enter an order number."
+  ORDER 90
+
+ADD FIELD "POLineStatus" OF "POLine" AS character 
+  FORMAT "x(20)"
+  INITIAL "Ordered"
+  LABEL "PO Line Status"
+  MAX-WIDTH 40
+  VIEW-AS "VIEW-AS COMBO-BOX LIST-ITEMS ""Ordered"", ""Shipped"", ""Received"""
+  HELP "Please enter the PO status."
+  ORDER 100
+
+ADD INDEX "PONumLineNum" ON "POLine" 
+  AREA "Index Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "PONum" ASCENDING 
+  INDEX-FIELD "LineNum" ASCENDING 
+
+ADD TABLE "PurchaseOrder"
+  AREA "Data Area"
+  DESCRIPTION "The purchaseorder table contains information pertaining to the purchase order including: PO number and status."
+  DUMP-NAME "purchase"
+  TABLE-TRIGGER "CREATE" NO-OVERRIDE PROCEDURE "OpenEdge/LoadSuite/Common/Triggers/crpo.p" CRC "?" 
+
+ADD FIELD "PONum" OF "PurchaseOrder" AS int64 
+  FORMAT "zzzzzzzzz9"
+  INITIAL "0"
+  LABEL "PO Num"
+  MAX-WIDTH 4
+  VALEXP "ponum > 0"
+  VALMSG "PO number must be greater than zero"
+  HELP "Please Enter a PO Number."
+  ORDER 10
+
+ADD FIELD "DateEntered" OF "PurchaseOrder" AS date 
+  FORMAT "99/99/9999"
+  INITIAL ?
+  LABEL "Date Entered"
+  MAX-WIDTH 4
+  HELP "Please enter today's date."
+  ORDER 20
+
+ADD FIELD "SupplierIDNum" OF "PurchaseOrder" AS int64 
+  DESCRIPTION "Supplier ID number"
+  FORMAT "zzzzzzzzz9"
+  INITIAL "0"
+  LABEL "Supplier ID"
+  MAX-WIDTH 4
+  COLUMN-LABEL "Supplier ID"
+  VALEXP "CAN-FIND(supplier OF purchaseorder)"
+  VALMSG "Supplier must exist."
+  HELP "Please enter a  Supplier ID"
+  ORDER 30
+
+ADD FIELD "ReceiveDate" OF "PurchaseOrder" AS date 
+  FORMAT "99/99/9999"
+  INITIAL ?
+  LABEL "Date Received"
+  MAX-WIDTH 4
+  HELP "Please enter the Receive Date"
+  ORDER 40
+
+ADD FIELD "POStatus" OF "PurchaseOrder" AS character 
+  FORMAT "x(20)"
+  INITIAL "Ordered"
+  LABEL "PO Status"
+  MAX-WIDTH 40
+  VIEW-AS "VIEW-AS COMBO-BOX LIST-ITEMS ""Ordered"", ""Shipped"", ""Partially Received"", ""Received"""
+  HELP "Please enter the PO status."
+  ORDER 50
+
+ADD INDEX "PONum" ON "PurchaseOrder" 
+  AREA "Index Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "PONum" ASCENDING 
+
+ADD TABLE "RefCall"
+  AREA "Data Area"
+  DESCRIPTION "The refcall table contains information about a sale."
+  DUMP-NAME "refcall"
+  TABLE-TRIGGER "CREATE" NO-OVERRIDE PROCEDURE "OpenEdge/LoadSuite/Common/Triggers/crref.p" CRC "?" 
+
+ADD FIELD "CallNum" OF "RefCall" AS int64 
+  FORMAT ">>>>9"
+  INITIAL "0"
+  LABEL "Call Num"
+  MAX-WIDTH 4
+  VALEXP "callnum > 0"
+  VALMSG "Call number must be greater than zero"
+  HELP "Please enter the call number."
+  ORDER 10
+
+ADD FIELD "CustNum" OF "RefCall" AS int64 
+  FORMAT ">>>>9"
+  INITIAL "0"
+  LABEL "Cust Num"
+  MAX-WIDTH 4
+  VALEXP "custnum > 0"
+  VALMSG "Customer number must be greater than zero"
+  HELP "Please enter the customer number."
+  ORDER 20
+
+ADD FIELD "CallDate" OF "RefCall" AS date 
+  FORMAT "99/99/9999"
+  INITIAL ?
+  LABEL "Call Date"
+  MAX-WIDTH 4
+  HELP "Please enter the call date."
+  ORDER 30
+
+ADD FIELD "SalesRep" OF "RefCall" AS character 
+  FORMAT "x(4)"
+  INITIAL ""
+  LABEL "Sales Rep"
+  MAX-WIDTH 8
+  HELP "Please enter the sales rep."
+  ORDER 40
+
+ADD FIELD "Parent" OF "RefCall" AS character 
+  FORMAT "x(6)"
+  INITIAL ""
+  LABEL "Parent"
+  MAX-WIDTH 12
+  HELP "Please enter the parent."
+  ORDER 50
+
+ADD FIELD "Txt" OF "RefCall" AS character 
+  FORMAT "x(300)"
+  INITIAL ""
+  LABEL "Txt"
+  MAX-WIDTH 600
+  VIEW-AS "VIEW-AS EDITOR SCROLLBAR-HORIZONTAL SCROLLBAR-VERTICAL SIZE 60 BY 5"
+  HELP "Please enter text"
+  ORDER 60
+
+ADD INDEX "CallNum" ON "RefCall" 
+  AREA "Index Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "CallNum" ASCENDING 
+
+ADD INDEX "CustNum" ON "RefCall" 
+  AREA "Index Area"
+  UNIQUE
+  INDEX-FIELD "CustNum" ASCENDING 
+  INDEX-FIELD "CallNum" ASCENDING 
+
+ADD INDEX "Sibling" ON "RefCall" 
+  AREA "Index Area"
+  UNIQUE
+  INDEX-FIELD "Parent" ASCENDING 
+  INDEX-FIELD "CallNum" ASCENDING 
+
+ADD INDEX "Txt" ON "RefCall" 
+  AREA "Index Area"
+  WORD
+  INDEX-FIELD "Txt" ASCENDING 
+
+ADD TABLE "SalesRep"
+  AREA "Data Area"
+  DESCRIPTION "The SalesRep table contains sales representative information"
+  VALEXP "NOT CAN-FIND(FIRST Customer Of SalesRep)"
+  VALMSG "Cannot delete if used in one or more customer records."
+  DUMP-NAME "salesrep"
+
+ADD FIELD "RepName" OF "SalesRep" AS character 
+  FORMAT "x(30)"
+  INITIAL ""
+  LABEL "Rep Name"
+  MAX-WIDTH 60
+  HELP "Please enter the Name of the Salesperson."
+  ORDER 20
+
+ADD FIELD "Region" OF "SalesRep" AS character 
+  FORMAT "x(8)"
+  INITIAL ""
+  LABEL "Region"
+  MAX-WIDTH 16
+  HELP "Please enter the Sales Region covered by this salesman."
+  ORDER 30
+
+ADD FIELD "SalesRep" OF "SalesRep" AS character 
+  FORMAT "x(4)"
+  INITIAL ""
+  LABEL "Sales Rep"
+  MAX-WIDTH 8
+  HELP "Please enter the Sales Rep."
+  ORDER 1
+
+ADD FIELD "MonthQuota" OF "SalesRep" AS int64 
+  FORMAT "->,>>>,>>9"
+  INITIAL "0"
+  LABEL "Month Quota"
+  MAX-WIDTH 264
+  HELP "Please enter the Month Quota."
+  EXTENT 12
+  ORDER 40
+
+ADD INDEX "SalesRep" ON "SalesRep" 
+  AREA "Index Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "SalesRep" ASCENDING 
+
+ADD TABLE "ShipTo"
+  AREA "Data Area"
+  DESCRIPTION "The shipto table contains the ship to address information for an order."
+  DUMP-NAME "shipto"
+
+ADD FIELD "CustNum" OF "ShipTo" AS int64 
+  FORMAT ">>>>9"
+  INITIAL "0"
+  LABEL "Cust Num"
+  MAX-WIDTH 4
+  VALEXP "CAN-FIND(customer OF shipto)"
+  VALMSG "Customer must exist"
+  HELP "Please enter the customer number."
+  ORDER 10
+
+ADD FIELD "ShipToID" OF "ShipTo" AS int64 
+  FORMAT "zzzzzzzzz9"
+  INITIAL "0"
+  LABEL "Ship To ID"
+  MAX-WIDTH 4
+  HELP "Please enter the Shipto ID"
+  ORDER 20
+
+ADD FIELD "Contact" OF "ShipTo" AS character 
+  FORMAT "x(30)"
+  INITIAL ""
+  LABEL "Contact"
+  MAX-WIDTH 60
+  HELP "Please enter the contact."
+  ORDER 30
+
+ADD FIELD "Address" OF "ShipTo" AS character 
+  FORMAT "x(35)"
+  INITIAL ""
+  LABEL "Address"
+  MAX-WIDTH 70
+  HELP "Please enter the address."
+  ORDER 40
+
+ADD FIELD "Address2" OF "ShipTo" AS character 
+  FORMAT "x(35)"
+  INITIAL ""
+  LABEL "Address2"
+  MAX-WIDTH 70
+  HELP "Please enter the address."
+  ORDER 50
+
+ADD FIELD "City" OF "ShipTo" AS character 
+  FORMAT "x(25)"
+  INITIAL ""
+  LABEL "City"
+  MAX-WIDTH 50
+  HELP "Please enter the city"
+  ORDER 60
+
+ADD FIELD "State" OF "ShipTo" AS character 
+  DESCRIPTION "Label/Valexp/Valmsg/Help are set based on value of NON-US field!"
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "State"
+  MAX-WIDTH 40
+  HELP "Please enter standard state abbreviation."
+  ORDER 70
+
+ADD FIELD "PostalCode" OF "ShipTo" AS character 
+  DESCRIPTION "Format/Label/Help Message based on status of NON-US field."
+  FORMAT "x(10)"
+  INITIAL ""
+  LABEL "Postal Code"
+  MAX-WIDTH 20
+  HELP "Please enter the appropriate postal code."
+  ORDER 80
+
+ADD FIELD "Phone" OF "ShipTo" AS character 
+  DESCRIPTION "Format/Label/Help based on status of NON-US field."
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "Phone"
+  MAX-WIDTH 40
+  HELP "Please enter the phone number"
+  ORDER 90
+
+ADD FIELD "Comments" OF "ShipTo" AS character 
+  FORMAT "x(80)"
+  INITIAL ""
+  LABEL "Comments"
+  MAX-WIDTH 160
+  HELP "Please enter the comments."
+  ORDER 100
+
+ADD FIELD "Name" OF "ShipTo" AS character 
+  FORMAT "x(30)"
+  INITIAL ""
+  LABEL "Name"
+  MAX-WIDTH 60
+  HELP "Please enter the name"
+  ORDER 110
+
+ADD INDEX "CustNumShipTo" ON "ShipTo" 
+  AREA "Index Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "CustNum" ASCENDING 
+  INDEX-FIELD "ShipToID" ASCENDING 
+
+ADD TABLE "State"
+  AREA "Data Area"
+  DESCRIPTION "The state table contans state abbreviations and corresponding sales regions"
+  VALEXP "NOT (CAN-FIND(FIRST customer OF state))"
+  VALMSG "This state record is used by at least one Customer record."
+  DUMP-NAME "state"
+
+ADD FIELD "State" OF "State" AS character 
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "State"
+  MAX-WIDTH 40
+  HELP "Please enter the state abbreviation."
+  ORDER 10
+
+ADD FIELD "StateName" OF "State" AS character 
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "State Name"
+  MAX-WIDTH 40
+  HELP "Please enter the full state name."
+  ORDER 20
+
+ADD FIELD "Region" OF "State" AS character 
+  FORMAT "x(8)"
+  INITIAL ""
+  LABEL "Region"
+  MAX-WIDTH 16
+  HELP "Please enter the sales region for state."
+  ORDER 30
+
+ADD INDEX "State" ON "State" 
+  AREA "Index Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "State" ASCENDING 
+
+ADD TABLE "Supplier"
+  AREA "Data Area"
+  DESCRIPTION "The supplier table contains a supplier's name, address and additional information pertaining to the supplier."
+  DUMP-NAME "supplier"
+  TABLE-TRIGGER "CREATE" NO-OVERRIDE PROCEDURE "OpenEdge/LoadSuite/Common/Triggers/crsuppl.p" CRC "?" 
+  TABLE-TRIGGER "DELETE" NO-OVERRIDE PROCEDURE "OpenEdge/LoadSuite/Common/Triggers/delsuppl.p" CRC "?" 
+
+ADD FIELD "SupplierIDNum" OF "Supplier" AS int64 
+  DESCRIPTION "Supplier ID number"
+  FORMAT "zzzzzzzzz9"
+  INITIAL "0"
+  LABEL "Supplier ID"
+  MAX-WIDTH 4
+  COLUMN-LABEL "Supplier ID"
+  VALEXP "supplier.SupplierIDnum > 0"
+  VALMSG "Supplier number must be greater than zero"
+  HELP "Please enter a Supplier ID Number."
+  ORDER 10
+
+ADD FIELD "Name" OF "Supplier" AS character 
+  DESCRIPTION "Enter Supplier Name"
+  FORMAT "x(30)"
+  INITIAL ""
+  LABEL "Name"
+  MAX-WIDTH 60
+  COLUMN-LABEL "Name"
+  HELP "Please enter the Supplier's Name."
+  LENGTH 0
+  ORDER 11
+
+ADD FIELD "Address" OF "Supplier" AS character 
+  FORMAT "x(35)"
+  INITIAL ""
+  LABEL "Address"
+  MAX-WIDTH 70
+  COLUMN-LABEL "Address"
+  HELP "Please enter the Supplier Address."
+  LENGTH 0
+  ORDER 12
+
+ADD FIELD "Address2" OF "Supplier" AS character 
+  FORMAT "x(35)"
+  INITIAL ""
+  LABEL "Address2"
+  MAX-WIDTH 70
+  COLUMN-LABEL "Address2"
+  HELP "Please enter the Supplier Address 2."
+  LENGTH 0
+  ORDER 13
+
+ADD FIELD "City" OF "Supplier" AS character 
+  FORMAT "x(25)"
+  INITIAL ""
+  LABEL "City"
+  MAX-WIDTH 50
+  COLUMN-LABEL "City"
+  HELP "Please enter the Supplier City."
+  LENGTH 0
+  ORDER 14
+
+ADD FIELD "State" OF "Supplier" AS character 
+  DESCRIPTION "Label/Valexp/Valmsg/Help are set based on value of NON-US field!"
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "State"
+  MAX-WIDTH 40
+  COLUMN-LABEL "State"
+  HELP "Please enter standard state abbreviation."
+  LENGTH 0
+  ORDER 15
+
+ADD FIELD "Country" OF "Supplier" AS character 
+  FORMAT "x(20)"
+  INITIAL "USA"
+  LABEL "Country"
+  MAX-WIDTH 40
+  COLUMN-LABEL "Country"
+  HELP "Please enter a county."
+  LENGTH 0
+  ORDER 18
+
+ADD FIELD "Phone" OF "Supplier" AS character 
+  DESCRIPTION "Format/Label/Help based on status of NON-US field."
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "Phone"
+  MAX-WIDTH 40
+  COLUMN-LABEL "Phone"
+  HELP "Please enter a phone number"
+  LENGTH 0
+  ORDER 115
+
+ADD FIELD "Password" OF "Supplier" AS character 
+  DESCRIPTION "Password for Supplier"
+  FORMAT "x(8)"
+  INITIAL ""
+  LABEL "Password"
+  MAX-WIDTH 16
+  COLUMN-LABEL "Password"
+  HELP "Please enter a Password."
+  LENGTH 0
+  ORDER 190
+  MANDATORY
+  CASE-SENSITIVE
+
+ADD FIELD "LoginDate" OF "Supplier" AS date 
+  FORMAT "99/99/9999"
+  INITIAL ?
+  LABEL "Login Date"
+  MAX-WIDTH 4
+  COLUMN-LABEL "Login Date"
+  HELP "Please enter the Last Login Date."
+  ORDER 200
+
+ADD FIELD "Comments" OF "Supplier" AS character 
+  FORMAT "x(80)"
+  INITIAL ""
+  LABEL "Comments"
+  MAX-WIDTH 160
+  COLUMN-LABEL "Comments"
+  HELP "Please enter comments."
+  LENGTH 0
+  ORDER 180
+
+ADD FIELD "ShipAmount" OF "Supplier" AS int64 
+  FORMAT ">>>>9"
+  INITIAL "100"
+  LABEL "Ship Amount"
+  MAX-WIDTH 4
+  COLUMN-LABEL "Ship Amount"
+  HELP "Please enter the Amount to Ship."
+  ORDER 210
+
+ADD FIELD "PostalCode" OF "Supplier" AS character 
+  DESCRIPTION "Format/Label/Help Message based on status of NON-US field."
+  FORMAT "x(10)"
+  INITIAL ""
+  LABEL "ZipCode"
+  MAX-WIDTH 20
+  COLUMN-LABEL "ZipCode"
+  HELP "Please enter the appropriate Postal Code."
+  LENGTH 0
+  ORDER 17
+
+ADD FIELD "Discount" OF "Supplier" AS int64 
+  FORMAT ">>9%"
+  INITIAL "0"
+  LABEL "Discount"
+  MAX-WIDTH 4
+  VALEXP "Discount >= 0"
+  VALMSG "Discount must be greater or equal to 0"
+  HELP "Please enter a percentage from 0 to 100."
+  ORDER 230
+
+ADD INDEX "SupplierID" ON "Supplier" 
+  AREA "Index Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "SupplierIDNum" ASCENDING 
+
+ADD TABLE "SupplierItemXref"
+  AREA "Data Area"
+  DESCRIPTION "The supplieritemxref lists all of the items that are supplied by a particlar supplier."
+  DUMP-NAME "suppitem"
+
+ADD FIELD "SupplierIDNum" OF "SupplierItemXref" AS int64 
+  DESCRIPTION "Supplier ID number"
+  FORMAT "zzzzzzzzz9"
+  INITIAL "0"
+  LABEL "Supplier ID"
+  MAX-WIDTH 4
+  COLUMN-LABEL "Supplier ID"
+  VALEXP "CAN-FIND(supplier OF supplieritemxref)"
+  VALMSG "Supplier must exist."
+  HELP "Please enter a Supplier ID"
+  ORDER 10
+
+ADD FIELD "ItemNum" OF "SupplierItemXref" AS int64 
+  FORMAT "zzzzzzzzz9"
+  INITIAL "0"
+  LABEL "Item #"
+  MAX-WIDTH 4
+  COLUMN-LABEL "Item #"
+  VALEXP "CAN-FIND(item OF supplieritemxref)"
+  VALMSG "Item must be on file."
+  HELP "Please enter an Item Number"
+  ORDER 20
+
+ADD INDEX "SupplierIDItemNum" ON "SupplierItemXref" 
+  AREA "Index Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "SupplierIDNum" ASCENDING 
+  INDEX-FIELD "ItemNum" ASCENDING 
+
+ADD INDEX "ItemNumSupplierID" ON "SupplierItemXref" 
+  AREA "Index Area"
+  UNIQUE
+  INDEX-FIELD "ItemNum" ASCENDING 
+  INDEX-FIELD "SupplierIDNum" ASCENDING 
+
+ADD TABLE "TimeSheet"
+  AREA "Data Area"
+  DESCRIPTION "The timesheet table records time in and out, hours worked, and overtime."
+  DUMP-NAME "timeshee"
+
+ADD FIELD "EmpNum" OF "TimeSheet" AS int64 
+  FORMAT "zzzzzzzzz9"
+  INITIAL "0"
+  LABEL "Emp No"
+  MAX-WIDTH 4
+  VALEXP "CAN-FIND(employee OF timesheet)"
+  VALMSG "Employee must exist."
+  HELP "Please enter the emp number"
+  ORDER 10
+
+ADD FIELD "DayRecorded" OF "TimeSheet" AS date 
+  FORMAT "99/99/9999"
+  INITIAL ?
+  LABEL "Day Recorded"
+  MAX-WIDTH 4
+  HELP "Please enter the day recorded"
+  ORDER 20
+
+ADD FIELD "TypeRecorded" OF "TimeSheet" AS character 
+  FORMAT "x(8)"
+  INITIAL ""
+  LABEL "Type Recorded"
+  MAX-WIDTH 16
+  HELP "Please enter Worked, Vacation, Sick, or  Holiday."
+  LENGTH 0
+  ORDER 30
+
+ADD FIELD "AMTimeIn" OF "TimeSheet" AS character 
+  FORMAT "xx:xx"
+  INITIAL ""
+  LABEL "AM Time In"
+  MAX-WIDTH 10
+  HELP "Please enter AM Time in"
+  LENGTH 0
+  ORDER 40
+
+ADD FIELD "AMTimeOut" OF "TimeSheet" AS character 
+  FORMAT "xx:xx"
+  INITIAL ""
+  LABEL "AM Time Out"
+  MAX-WIDTH 10
+  HELP "Please enter AM Time Out"
+  LENGTH 0
+  ORDER 50
+
+ADD FIELD "PMTimeIn" OF "TimeSheet" AS character 
+  FORMAT "xx:xx"
+  INITIAL ""
+  LABEL "PM Time In"
+  MAX-WIDTH 10
+  HELP "Please enter PM Time In"
+  LENGTH 0
+  ORDER 60
+
+ADD FIELD "PMTimeOut" OF "TimeSheet" AS character 
+  FORMAT "xx:xx"
+  INITIAL ""
+  LABEL "PM Time Out"
+  MAX-WIDTH 10
+  HELP "Please enter PM Time Out"
+  LENGTH 0
+  ORDER 70
+
+ADD FIELD "RegularHours" OF "TimeSheet" AS decimal 
+  FORMAT ">>9.<<"
+  INITIAL "0"
+  LABEL "Regular Hours"
+  MAX-WIDTH 17
+  HELP "Please enter Regular Hours"
+  DECIMALS 2
+  ORDER 80
+
+ADD FIELD "OvertimeHours" OF "TimeSheet" AS decimal 
+  FORMAT ">>9.<<"
+  INITIAL "0"
+  LABEL "Overtime Hours"
+  MAX-WIDTH 17
+  HELP "Please enter Overtime Hours"
+  DECIMALS 2
+  ORDER 90
+
+ADD INDEX "EmpNoDayRecorded" ON "TimeSheet" 
+  AREA "Index Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "EmpNum" ASCENDING 
+  INDEX-FIELD "DayRecorded" ASCENDING 
+
+ADD TABLE "Vacation"
+  AREA "Data Area"
+  DESCRIPTION "The vacation table keeps track of employee vacation time."
+  DUMP-NAME "vacation"
+
+ADD FIELD "EmpNum" OF "Vacation" AS int64 
+  FORMAT "zzzzzzzzz9"
+  INITIAL "0"
+  LABEL "Emp No"
+  MAX-WIDTH 4
+  VALEXP "CAN-FIND(employee WHERE employee.empnum = vacation.empnum)"
+  VALMSG "Employee must exist"
+  HELP "Please enter the Emp Num."
+  ORDER 5
+
+ADD FIELD "StartDate" OF "Vacation" AS date 
+  FORMAT "99/99/9999"
+  INITIAL ?
+  LABEL "Start Date"
+  MAX-WIDTH 4
+  HELP "Please enter the Start Date."
+  ORDER 15
+
+ADD FIELD "EndDate" OF "Vacation" AS date 
+  FORMAT "99/99/9999"
+  INITIAL ?
+  LABEL "End Date"
+  MAX-WIDTH 4
+  HELP "Please enter the End Date."
+  ORDER 25
+
+ADD INDEX "EmpNoStartDate" ON "Vacation" 
+  AREA "Index Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "EmpNum" ASCENDING 
+  INDEX-FIELD "StartDate" ASCENDING 
+
+ADD TABLE "Warehouse"
+  AREA "Data Area"
+  DESCRIPTION "The warehouse table contains warehouse information including warehouse name and address."
+  DUMP-NAME "warehous"
+  TABLE-TRIGGER "CREATE" NO-OVERRIDE PROCEDURE "OpenEdge/LoadSuite/Common/Triggers/crware.p" CRC "?" 
+  TABLE-TRIGGER "WRITE" NO-OVERRIDE PROCEDURE "OpenEdge/LoadSuite/Common/Triggers/wrware.p" CRC "?" 
+
+ADD FIELD "WarehouseNum" OF "Warehouse" AS int64 
+  FORMAT "zzzzzzzzz9"
+  INITIAL "0"
+  LABEL "Warehouse Num"
+  MAX-WIDTH 4
+  VALEXP "warehousenum > 0"
+  VALMSG "Entrer a number greater than zero"
+  HELP "Please enter the Warehouse Number."
+  ORDER 10
+
+ADD FIELD "WarehouseName" OF "Warehouse" AS character 
+  FORMAT "x(30)"
+  INITIAL ""
+  LABEL "Warehouse Name"
+  MAX-WIDTH 60
+  HELP "Please enter a warehouse name."
+  ORDER 20
+
+ADD FIELD "Country" OF "Warehouse" AS character 
+  FORMAT "x(20)"
+  INITIAL "USA"
+  LABEL "Country"
+  MAX-WIDTH 40
+  HELP "Please enter a country."
+  ORDER 30
+
+ADD FIELD "Address" OF "Warehouse" AS character 
+  FORMAT "x(35)"
+  INITIAL ""
+  LABEL "Address"
+  MAX-WIDTH 70
+  HELP "Please enter an address."
+  ORDER 40
+
+ADD FIELD "Address2" OF "Warehouse" AS character 
+  FORMAT "x(35)"
+  INITIAL ""
+  LABEL "Address2"
+  MAX-WIDTH 70
+  HELP "Please enter an address."
+  ORDER 50
+
+ADD FIELD "City" OF "Warehouse" AS character 
+  FORMAT "x(25)"
+  INITIAL ""
+  LABEL "City"
+  MAX-WIDTH 50
+  HELP "Please enter a city."
+  ORDER 60
+
+ADD FIELD "State" OF "Warehouse" AS character 
+  DESCRIPTION "Label/Valexp/Valmsg/Help are set based on value of NON-US field!"
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "State"
+  MAX-WIDTH 40
+  HELP "Please enter standard state abbreviation."
+  ORDER 70
+
+ADD FIELD "PostalCode" OF "Warehouse" AS character 
+  DESCRIPTION "Format/Label/Help Message based on status of NON-US field."
+  FORMAT "x(10)"
+  INITIAL ""
+  LABEL "Postal Code"
+  MAX-WIDTH 20
+  HELP "Please enter the appropriate Postal Code."
+  ORDER 80
+
+ADD FIELD "Phone" OF "Warehouse" AS character 
+  DESCRIPTION "Format/Label/Help based on status of NON-US field."
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "Phone"
+  MAX-WIDTH 40
+  HELP "Please enter a phone."
+  ORDER 90
+
+ADD INDEX "WarehouseNum" ON "Warehouse" 
+  AREA "Index Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "WarehouseNum" ASCENDING 
+
+ADD INDEX "WarehouseName" ON "Warehouse" 
+  AREA "Index Area"
+  INDEX-FIELD "WarehouseName" ASCENDING 
+
+
+ADD TABLE "AuditHeader"
+  AREA "Audit Header Data Area"
+  DESCRIPTION "Header audit records that stores transaction information pertinent to an audit record 
+
+The AuditHeader is used to maintain the relationship between related AuditDetail records, and provides miscellaneous information about where the audit originated."
+  DUMP-NAME "aud_head"
+
+ADD FIELD "AuditWord" OF "AuditHeader" AS character 
+  DESCRIPTION "Contains specific information about the current Audit Header record."
+  FORMAT "x(600)"
+  INITIAL ""
+  LABEL "Audit Word"
+  POSITION 2
+  MAX-WIDTH 1200
+  ORDER 220
+
+ADD FIELD "ParentAuditKey" OF "AuditHeader" AS int64 
+  DESCRIPTION "Stores primary key of related AuditHeader record."
+  FORMAT "->,>>>,>>>,>>9"
+  INITIAL "0"
+  LABEL "Parent Audit Key"
+  POSITION 3
+  MAX-WIDTH 8
+  ORDER 210
+
+ADD FIELD "TranContextTranSysID" OF "AuditHeader" AS character 
+  DESCRIPTION "System_id of the transaction id referenced by tran_context_id. This field is populated based on the category assignment of the particular transaction or maintenance record being audited."
+  FORMAT "x(8)"
+  INITIAL ""
+  LABEL "Tran System ID"
+  POSITION 4
+  MAX-WIDTH 16
+  ORDER 200
+
+ADD FIELD "RecordKey" OF "AuditHeader" AS character 
+  DESCRIPTION "Name value pair list of fields and their values that comprise the primary key of the transaction record associated with this audit."
+  FORMAT "x(150)"
+  INITIAL ""
+  LABEL "Record Key"
+  POSITION 5
+  MAX-WIDTH 300
+  ORDER 190
+
+ADD FIELD "CallStack" OF "AuditHeader" AS character 
+  DESCRIPTION "Comma-delimited list of procedures (up to 4 deep) that led up to the audit. Maintenance aid used to trace an audit's origination point. First entry in the list represents module where audit was actually called. Additional entries work backwards from there."
+  FORMAT "x(1000)"
+  INITIAL ""
+  LABEL "Call Stack"
+  POSITION 6
+  MAX-WIDTH 2000
+  ORDER 180
+
+ADD FIELD "AuditType" OF "AuditHeader" AS character 
+  DESCRIPTION "Type of audit record, ""Create"", ""Update"" or ""Delete"""
+  FORMAT "x(10)"
+  INITIAL ""
+  LABEL "Audit Type"
+  POSITION 7
+  MAX-WIDTH 20
+  ORDER 170
+
+ADD FIELD "AuditName" OF "AuditHeader" AS character 
+  DESCRIPTION "Table or process name of the audit (ie, ""UOM Conversion Error"" or ""so_detail"")."
+  FORMAT "x(30)"
+  INITIAL ""
+  LABEL "Audit Name"
+  POSITION 8
+  MAX-WIDTH 60
+  ORDER 160
+
+ADD FIELD "CreatedTime" OF "AuditHeader" AS character 
+  DESCRIPTION "Time record was created."
+  FORMAT "x(8)"
+  INITIAL ""
+  LABEL "Created Time"
+  POSITION 9
+  MAX-WIDTH 16
+  ORDER 150
+
+ADD FIELD "CreatedDate" OF "AuditHeader" AS date 
+  DESCRIPTION "Date record was created."
+  FORMAT "99/99/99"
+  INITIAL ?
+  LABEL "Created Date"
+  POSITION 10
+  MAX-WIDTH 4
+  ORDER 140
+
+ADD FIELD "CreatedBy" OF "AuditHeader" AS character 
+  DESCRIPTION "UserID of user that created record ('currentUserLogin' property from Session Manager)."
+  FORMAT "x(12)"
+  INITIAL ""
+  LABEL "Created By"
+  POSITION 11
+  MAX-WIDTH 24
+  ORDER 130
+
+ADD FIELD "ReviewStatus" OF "AuditHeader" AS character 
+  DESCRIPTION "Value indicating review status of the audit. Valid entries: ""Reviewed"" and ""Blank"".   Additional values may be added in the future."
+  FORMAT "x(8)"
+  INITIAL "Blank"
+  LABEL "Review Status"
+  POSITION 12
+  MAX-WIDTH 16
+  ORDER 120
+
+ADD FIELD "WindowTitle" OF "AuditHeader" AS character 
+  DESCRIPTION "Title of the active window in Agility for the user's session when audit is performed(ie, ""Sales Order #6700 - [WESTON]"")."
+  FORMAT "x(85)"
+  INITIAL ""
+  LABEL "Window Title"
+  POSITION 13
+  MAX-WIDTH 170
+  ORDER 110
+
+ADD FIELD "ProgramName" OF "AuditHeader" AS character 
+  DESCRIPTION "Name of active window in Agility when the audit is being performed (ie, salesord.w, etc)."
+  FORMAT "x(32)"
+  INITIAL ""
+  LABEL "Filename"
+  POSITION 14
+  MAX-WIDTH 64
+  ORDER 100
+
+ADD FIELD "ProfName" OF "AuditHeader" AS character 
+  DESCRIPTION "Current branch when audit trigger fired or process audit performed ('currentBranch' property from session manager)."
+  FORMAT "x(8)"
+  INITIAL ""
+  LABEL "Prof Name"
+  POSITION 15
+  MAX-WIDTH 16
+  ORDER 90
+
+ADD FIELD "TranContextStatus" OF "AuditHeader" AS character 
+  DESCRIPTION "Status of the transaction (if known) when the audit is performed."
+  FORMAT "x(25)"
+  INITIAL ""
+  LABEL "Tran Status"
+  POSITION 16
+  MAX-WIDTH 50
+  ORDER 80
+
+ADD FIELD "TranContextAlt" OF "AuditHeader" AS character 
+  DESCRIPTION "Alternate alphanumeric value to further identify the uniqueness of the transaction or maintenance record when other context fields are not sufficient."
+  FORMAT "x(800)"
+  INITIAL ""
+  LABEL "Tran Alt"
+  POSITION 17
+  MAX-WIDTH 1600
+  ORDER 70
+
+ADD FIELD "TranContextSubID" OF "AuditHeader" AS int64 
+  DESCRIPTION "Sub-sequence of the transaction record being modified (ie, shipment number, etc)."
+  FORMAT ">>>9"
+  INITIAL "0"
+  LABEL "Tran SubID"
+  POSITION 18
+  MAX-WIDTH 16
+  ORDER 60
+
+ADD FIELD "TranContextSeq" OF "AuditHeader" AS int64 
+  DESCRIPTION "Sequence of the transaction record being modified (ie, so_detail sequence, etc)."
+  FORMAT ">>>>>>9"
+  INITIAL "0"
+  LABEL "Tran Seq"
+  POSITION 19
+  MAX-WIDTH 4
+  ORDER 50
+
+ADD FIELD "TranContextSysID" OF "AuditHeader" AS character 
+  DESCRIPTION "System_id of the transaction id referenced by tran_context_id. This field is populated based on the category assignment of the particular transaction or maintenance record being audited."
+  FORMAT "x(8)"
+  INITIAL ""
+  LABEL "Tran System ID"
+  POSITION 20
+  MAX-WIDTH 16
+  ORDER 40
+
+ADD FIELD "TranContextID" OF "AuditHeader" AS character 
+  DESCRIPTION "Alpha-numeric ID field for the transaction or maintenance record being audited.  (i.e., PO ID value of  ""12345"" where the TRAN_CONTEXT_TYPE field value = ""PO"")
+
+"
+  FORMAT "x(1000)"
+  INITIAL ""
+  LABEL "Tran ID"
+  POSITION 21
+  MAX-WIDTH 2000
+  ORDER 30
+
+ADD FIELD "TranContextType" OF "AuditHeader" AS character 
+  DESCRIPTION "Identifies the type of audit transaction (ie, PO, SO, WO, Cust, Item, etc)."
+  FORMAT "x(32)"
+  INITIAL ""
+  LABEL "Tran Type"
+  POSITION 22
+  MAX-WIDTH 64
+  ORDER 20
+
+ADD FIELD "AuditKey" OF "AuditHeader" AS int64 
+  DESCRIPTION "Primary key for this table. Derived from the database sequence 'audit_key'."
+  FORMAT "->,>>>,>>>,>>9"
+  INITIAL "0"
+  LABEL "Audit Key"
+  POSITION 23
+  MAX-WIDTH 8
+  ORDER 10
+
+ADD FIELD "TranContextCategory" OF "AuditHeader" AS character 
+  DESCRIPTION "Category assigned of the audit (table) for the purpose of grouping related table audit records."
+  FORMAT "x(30)"
+  INITIAL ""
+  LABEL "Transaction Context Category"
+  POSITION 24
+  MAX-WIDTH 60
+  ORDER 230
+
+ADD FIELD "UpdateBy" OF "AuditHeader" AS character 
+  DESCRIPTION "ID of the user that updated the record."
+  FORMAT "x(12)"
+  INITIAL ""
+  LABEL "Update By"
+  POSITION 25
+  MAX-WIDTH 24
+  ORDER 240
+
+ADD FIELD "UpdateDate" OF "AuditHeader" AS date 
+  DESCRIPTION "Date the record was last updated."
+  FORMAT "99/99/99"
+  INITIAL ?
+  LABEL "Update Date"
+  POSITION 26
+  MAX-WIDTH 4
+  ORDER 250
+
+ADD FIELD "UpdateTime" OF "AuditHeader" AS character 
+  DESCRIPTION "Time the record was last updated."
+  FORMAT "x(8)"
+  INITIAL ""
+  LABEL "Update Time"
+  POSITION 27
+  MAX-WIDTH 16
+  ORDER 260
+
+ADD FIELD "TranContextString" OF "AuditHeader" AS character 
+  DESCRIPTION "Miscellaneous string value used to find specific audits faster and to add an additional level of information to audits. The value in this field is stored in the audit_word field making it possible to find these records using an index."
+  FORMAT "x(30)"
+  INITIAL ""
+  LABEL "Tran Context String"
+  POSITION 28
+  MAX-WIDTH 60
+  ORDER 270
+
+ADD FIELD "AuthenticatedUser" OF "AuditHeader" AS character 
+  DESCRIPTION "This is the authenticated user email address or user name."
+  FORMAT "x(254)"
+  INITIAL ""
+  LABEL "Authenticated User"
+  POSITION 29
+  MAX-WIDTH 508
+  VIEW-AS ""
+  COLUMN-LABEL ""
+  ORDER 280
+
+ADD INDEX "PKAuditHeader" ON "AuditHeader" 
+  AREA "Audit Header Index Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "AuditKey" ASCENDING 
+
+ADD INDEX "WAuditWord" ON "AuditHeader" 
+  AREA "Audit Header Index Area"
+  WORD
+  INDEX-FIELD "AuditWord" ASCENDING
+
+ADD TABLE "AuditDetail"
+  AREA "Audit Detail Data Area"
+  DESCRIPTION "Audit data table that stores the detail information for a specific audit record 
+
+Multiple AuditDetail records may exist for a single AuditHeader record, and may represent multiple process and/or update and delete audits for a given transaction (i.e. transaction identified in AuditHeader may be for a given Sales Order; but AuditDetails related to that record may be for SO_DETAIL, ITEM_RESERVED, and ITEM_BO records)."
+  DUMP-NAME "aud_dtl"
+
+ADD FIELD "AuditEntity" OF "AuditDetail" AS character 
+  DESCRIPTION "Field or process ""value"" being audited (ie, ""cost"" from so_detail table)."
+  FORMAT "x(30)"
+  INITIAL ""
+  LABEL "Audit Entity"
+  POSITION 2
+  MAX-WIDTH 60
+  ORDER 90
+
+ADD FIELD "AfterValue" OF "AuditDetail" AS character 
+  DESCRIPTION "Value of the field after the change is made. Does not apply to delete audits."
+  FORMAT "x(16000)"
+  INITIAL ""
+  LABEL "After Value"
+  POSITION 3
+  MAX-WIDTH 31995
+  ORDER 70
+
+ADD FIELD "BeforeValue" OF "AuditDetail" AS character 
+  DESCRIPTION "Value of the field before the change is made or the delete performed."
+  FORMAT "x(16000)"
+  INITIAL ""
+  LABEL "Before Value"
+  POSITION 4
+  MAX-WIDTH 31995
+  ORDER 60
+
+ADD FIELD "AuditKey" OF "AuditDetail" AS int64 
+  DESCRIPTION "Foreign key to the AuditHeader table. Derived from the database sequence 'audit_key'."
+  FORMAT "->,>>>,>>9"
+  INITIAL "0"
+  LABEL "Audit Key"
+  POSITION 5
+  MAX-WIDTH 8
+  ORDER 10
+
+ADD INDEX "PKAuditDetail" ON "AuditDetail" 
+  AREA "Audit Detail Index Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "AuditKey" ASCENDING 
+  INDEX-FIELD "AuditEntity" ASCENDING
+
+ADD TABLE "ContextHeader"
+  AREA "Context Data Area"
+  DESCRIPTION "Identifier for a specific login of a specific user. If a user is logged in twice, or connected to the Agility AppServer for two different processes, then there will be two ContextHeader records for the user. ContextHeader, along with ContextDetail, is used to store information from or for a particular client-side session on the server, so that it can be used again if that client-side session calls another program on the server."
+  DUMP-NAME "ctx_head"
+
+ADD FIELD "ProductCode" OF "ContextHeader" AS character 
+  DESCRIPTION "Code for product (Agility, PrtnrView, etc) for which context is being stored."
+  FORMAT "x(10)"
+  INITIAL ""
+  LABEL "Product Code"
+  POSITION 2
+  MAX-WIDTH 20
+  ORDER 50
+
+ADD FIELD "ClientUserID" OF "ContextHeader" AS character 
+  DESCRIPTION "User ID of the client process that asked to establish the session context.  Should correspond to a valid user of the DMSI product (Agility, PartnerView, etc) that is providing access to the client process."
+  FORMAT "x(12)"
+  INITIAL ""
+  LABEL "User ID"
+  POSITION 3
+  MAX-WIDTH 24
+  ORDER 40
+
+ADD FIELD "SetUserInfo" OF "ContextHeader" AS character 
+  DESCRIPTION "Information derived on the server side at login time that is used in subsequent calls to set the database user ID for database monitoring tools to see. The data in this field is encrypted before it is stored, and is not readable when queried."
+  FORMAT "x(40)"
+  INITIAL ""
+  LABEL "Setuser Info"
+  POSITION 4
+  MAX-WIDTH 80
+  ORDER 30
+
+ADD FIELD "ContextLastAccess" OF "ContextHeader" AS datetime 
+  DESCRIPTION "Indicates last time server was accessed by a particular client session."
+  FORMAT "99/99/9999 HH:MM:SS.SSS"
+  INITIAL ?
+  LABEL "Context Last Access"
+  POSITION 5
+  MAX-WIDTH 80
+  ORDER 20
+
+ADD FIELD "ContextID" OF "ContextHeader" AS character 
+  DESCRIPTION "Unique value that identifies a particular client process-to-appserver relationship. The value is established by the AppServer when the client process makes it�s first call, and is passed back to the client process.  The client process then passes the context_id on subsequent calls to the AppServer, so the server programs can access any context information that has been stored for that client session in the ContextDetail table."
+  FORMAT "x(200)"
+  INITIAL ""
+  LABEL "Context ID"
+  POSITION 6
+  MAX-WIDTH 400
+  ORDER 10
+
+ADD INDEX "PKContextHeader" ON "ContextHeader" 
+  AREA "Context Index Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "ContextID" ASCENDING 
+
+ADD INDEX "XLastAccess" ON "ContextHeader" 
+  AREA "Context Index Area"
+  INDEX-FIELD "ContextLastAccess" ASCENDING 
+
+ADD INDEX "XProductContext" ON "ContextHeader" 
+  AREA "Context Index Area"
+  INDEX-FIELD "ProductCode" ASCENDING 
+  INDEX-FIELD "ContextID" ASCENDING 
+
+ADD INDEX "XUserID" ON "ContextHeader" 
+  AREA "Context Index Area"
+  INDEX-FIELD "ClientUserID" ASCENDING 
+
+ADD TABLE "ContextDetail"
+  AREA "Context Data Area"
+  DESCRIPTION "Property name and value for a specific login of a specific user. Related to ContextHeader by CONTEXT_ID. There can be many ContextDetail records for one ContextHeader."
+  DUMP-NAME "ctx_dtl"
+
+ADD FIELD "PropertyValue" OF "ContextDetail" AS character 
+  DESCRIPTION "Value of a context property being saved for the client process identified by context_id. "
+  FORMAT "x(10000)"
+  INITIAL ""
+  LABEL "Property Value"
+  POSITION 2
+  MAX-WIDTH 20000
+  ORDER 30
+
+ADD FIELD "PropertyName" OF "ContextDetail" AS character 
+  DESCRIPTION "Name of a context property being saved for the client process identified by context_id. "
+  FORMAT "x(40)"
+  INITIAL ""
+  LABEL "Property Name"
+  POSITION 3
+  MAX-WIDTH 80
+  ORDER 20
+
+ADD FIELD "ContextID" OF "ContextDetail" AS character 
+  DESCRIPTION "Value that identifies a particular client process for which the property in the ContextDetail record was saved. "
+  FORMAT "x(200)"
+  INITIAL ""
+  LABEL "Context ID"
+  POSITION 4
+  MAX-WIDTH 400
+  ORDER 10
+
+ADD INDEX "PKContextDetail" ON "ContextDetail" 
+  AREA "Context Index Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "ContextID" ASCENDING 
+  INDEX-FIELD "PropertyName" ASCENDING
+
+ADD TABLE "ReplQueue"
+  AREA "Replication Data Area"
+  LABEL "Replication Queue"
+  DESCRIPTION "Pro2 replication table that identifies which Agility records have changes that need to be copied to the target database"
+  DUMP-NAME "replqueu"
+
+ADD FIELD "EventType" OF "ReplQueue" AS character 
+  FORMAT "x(8)"
+  INITIAL ""
+  LABEL "Event Type"
+  POSITION 3
+  MAX-WIDTH 16
+  VIEW-AS ""
+  COLUMN-LABEL "Event Type"
+  ORDER 20
+
+ADD FIELD "SrcDB" OF "ReplQueue" AS character 
+  FORMAT "x(12)"
+  INITIAL ""
+  LABEL "Source DB"
+  POSITION 4
+  MAX-WIDTH 100
+  VIEW-AS ""
+  COLUMN-LABEL "Source!Database"
+  ORDER 30
+
+ADD FIELD "SrcTable" OF "ReplQueue" AS character 
+  FORMAT "x(32)"
+  INITIAL ""
+  LABEL "Source Table"
+  POSITION 5
+  MAX-WIDTH 100
+  VIEW-AS ""
+  COLUMN-LABEL "Source!Table"
+  ORDER 40
+
+ADD FIELD "SrcRecord" OF "ReplQueue" AS character 
+  FORMAT "x(18)"
+  INITIAL ""
+  LABEL "Source Record"
+  POSITION 6
+  MAX-WIDTH 200
+  VIEW-AS ""
+  COLUMN-LABEL "Source!Record"
+  ORDER 50
+
+ADD FIELD "EventDate" OF "ReplQueue" AS date 
+  FORMAT "99/99/9999"
+  INITIAL ?
+  LABEL "Event Date"
+  POSITION 7
+  MAX-WIDTH 32
+  VIEW-AS ""
+  COLUMN-LABEL "Event!Date"
+  ORDER 60
+
+ADD FIELD "EventTime" OF "ReplQueue" AS character 
+  FORMAT "x(8)"
+  INITIAL ""
+  LABEL "Event Time"
+  POSITION 8
+  MAX-WIDTH 100
+  VIEW-AS ""
+  COLUMN-LABEL "Event!Time"
+  ORDER 70
+
+ADD FIELD "SrcTransID" OF "ReplQueue" AS int64 
+  FORMAT ">,>>>,>>>,>>9"
+  INITIAL "0"
+  LABEL "Source Transaction"
+  POSITION 9
+  MAX-WIDTH 32
+  VIEW-AS ""
+  COLUMN-LABEL "Source!Transaction"
+  ORDER 80
+
+ADD FIELD "Username" OF "ReplQueue" AS character 
+  DESCRIPTION "User ID of the user that initiated the change."
+  FORMAT "x(16)"
+  INITIAL ""
+  LABEL "User"
+  POSITION 10
+  MAX-WIDTH 100
+  VIEW-AS ""
+  COLUMN-LABEL "User"
+  ORDER 90
+
+ADD FIELD "Sequence" OF "ReplQueue" AS int64 
+  FORMAT ">,>>>,>>>,>>9"
+  INITIAL "0"
+  LABEL "Sequence"
+  POSITION 11
+  MAX-WIDTH 32
+  VIEW-AS ""
+  COLUMN-LABEL "Sequence"
+  ORDER 10
+
+ADD FIELD "Applied" OF "ReplQueue" AS logical 
+  FORMAT "yes/no"
+  INITIAL "No"
+  LABEL "Applied?"
+  POSITION 13
+  MAX-WIDTH 1
+  VIEW-AS ""
+  COLUMN-LABEL "Applied?"
+  ORDER 100
+
+ADD FIELD "ApplDate" OF "ReplQueue" AS date 
+  FORMAT "99/99/9999"
+  INITIAL ?
+  LABEL "Applied Date"
+  POSITION 14
+  MAX-WIDTH 4
+  VIEW-AS ""
+  COLUMN-LABEL "Applied!Date"
+  ORDER 110
+
+ADD FIELD "ApplTime" OF "ReplQueue" AS character 
+  FORMAT "x(8)"
+  INITIAL ""
+  LABEL "Applied Time"
+  POSITION 15
+  MAX-WIDTH 100
+  VIEW-AS ""
+  COLUMN-LABEL "Applied!Time"
+  ORDER 120
+
+ADD FIELD "Audited" OF "ReplQueue" AS logical 
+  FORMAT "yes/no"
+  INITIAL "no"
+  LABEL "Audited?"
+  POSITION 16
+  MAX-WIDTH 1
+  VIEW-AS ""
+  COLUMN-LABEL "Audited"
+  ORDER 130
+
+ADD FIELD "AudDate" OF "ReplQueue" AS date 
+  FORMAT "99/99/9999"
+  INITIAL ?
+  LABEL "Date Audited"
+  POSITION 18
+  MAX-WIDTH 32
+  VIEW-AS ""
+  COLUMN-LABEL "Audit!Date"
+  ORDER 140
+
+ADD FIELD "RawData" OF "ReplQueue" AS raw 
+  FORMAT "X(8)"
+  INITIAL ""
+  LABEL "Raw Data"
+  POSITION 20
+  MAX-WIDTH 4000
+  VIEW-AS ""
+  COLUMN-LABEL "Raw Data"
+  ORDER 170
+
+ADD FIELD "UserCust" OF "ReplQueue" AS character 
+  FORMAT "x(32)"
+  INITIAL ""
+  LABEL "User Custom Data"
+  POSITION 21
+  MAX-WIDTH 100
+  VIEW-AS ""
+  COLUMN-LABEL "User!Custom"
+  ORDER 160
+
+ADD FIELD "AudTime" OF "ReplQueue" AS character 
+  FORMAT "x(8)"
+  INITIAL ""
+  LABEL "Audit Time"
+  POSITION 22
+  MAX-WIDTH 100
+  VIEW-AS ""
+  COLUMN-LABEL "Audit!Time"
+  ORDER 150
+
+ADD FIELD "QThread" OF "ReplQueue" AS int64 
+  DESCRIPTION "Queue Thread Number"
+  FORMAT "9"
+  INITIAL "0"
+  LABEL "Queue Thread #"
+  POSITION 23
+  MAX-WIDTH 32
+  VIEW-AS ""
+  COLUMN-LABEL "Thread"
+  ORDER 180
+
+ADD INDEX "IdxSeq" ON "ReplQueue" 
+  AREA "Replication Index Area"
+  UNIQUE
+  PRIMARY
+  DESCRIPTION "Main Primary Unique Index"
+  INDEX-FIELD "Sequence" ASCENDING 
+
+ADD INDEX "IdxApplied" ON "ReplQueue" 
+  AREA "Replication Index Area"
+  INDEX-FIELD "Applied" ASCENDING 
+  INDEX-FIELD "QThread" ASCENDING 
+  INDEX-FIELD "Sequence" ASCENDING 
+
+ADD INDEX "IdxAudited" ON "ReplQueue" 
+  AREA "Replication Index Area"
+  INDEX-FIELD "Audited" ASCENDING 
+
+ADD INDEX "IdxSrcRecord" ON "ReplQueue" 
+  AREA "Replication Index Area"
+  INDEX-FIELD "SrcRecord" ASCENDING 
+
+ADD INDEX "IdxSrcTable" ON "ReplQueue" 
+  AREA "Replication Index Area"
+  INDEX-FIELD "SrcTable" ASCENDING 
+
+ADD INDEX "RQCompression" ON "ReplQueue" 
+  AREA "Replication Index Area"
+  DESCRIPTION "Replication Process Index used to Pack/Compress ReplQueue"
+  INDEX-FIELD "Applied" ASCENDING 
+  INDEX-FIELD "SrcDB" ASCENDING 
+  INDEX-FIELD "SrcTable" ASCENDING 
+  INDEX-FIELD "SrcRecord" ASCENDING 
+  INDEX-FIELD "Sequence" ASCENDING 
+
+ADD TABLE "ReplProperties"
+  AREA "Replication Data Area"
+  LABEL "Properties"
+  DUMP-NAME "replprop"
+
+ADD FIELD "PropertyName" OF "ReplProperties" AS character 
+  FORMAT "x(32)"
+  INITIAL ""
+  LABEL "Property Name"
+  POSITION 2
+  MAX-WIDTH 500
+  VIEW-AS ""
+  COLUMN-LABEL "Property Name"
+  ORDER 10
+
+ADD FIELD "PropertyValue" OF "ReplProperties" AS character 
+  FORMAT "x(256)"
+  INITIAL ""
+  LABEL "Value"
+  POSITION 3
+  MAX-WIDTH 2000
+  VIEW-AS ""
+  COLUMN-LABEL "Property Value"
+  ORDER 20
+
+ADD FIELD "PropertyCategory" OF "ReplProperties" AS character 
+  FORMAT "x(8)"
+  INITIAL ""
+  LABEL ""
+  POSITION 4
+  MAX-WIDTH 16
+  VIEW-AS ""
+  COLUMN-LABEL ""
+  ORDER 30
+
+ADD INDEX "idxProperties" ON "ReplProperties" 
+  AREA "Replication Index Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "PropertyName" ASCENDING 
+
+ADD TABLE "ReplTableXRef"
+  AREA "Replication Data Area"
+  DESCRIPTION "Pro2 replication configuration table that defines the related source and target tables of a replicating pair of databases. The switches to turn replication on or off for particular pairs of tables are in this table"
+  DUMP-NAME "repltabl"
+
+ADD FIELD "SrcTable" OF "ReplTableXRef" AS character 
+  FORMAT "x(16)"
+  INITIAL ""
+  LABEL "Source Table"
+  POSITION 4
+  MAX-WIDTH 100
+  VIEW-AS ""
+  COLUMN-LABEL "Source Table"
+  ORDER 20
+
+ADD FIELD "TgtTable" OF "ReplTableXRef" AS character 
+  FORMAT "x(16)"
+  INITIAL ""
+  LABEL "Target Table"
+  POSITION 5
+  MAX-WIDTH 100
+  VIEW-AS ""
+  COLUMN-LABEL "Target Table"
+  ORDER 40
+
+ADD FIELD "GenQRec" OF "ReplTableXRef" AS logical 
+  DESCRIPTION "Are we generating Queue Records for this table"
+  FORMAT "Y/N"
+  INITIAL "Yes"
+  LABEL "Generate Queue Record"
+  POSITION 6
+  MAX-WIDTH 1
+  VIEW-AS ""
+  COLUMN-LABEL "Gen!Queue"
+  ORDER 50
+
+ADD FIELD "ProcQRec" OF "ReplTableXRef" AS logical 
+  DESCRIPTION "Should the Replication Processor Process"
+  FORMAT "Y/N"
+  INITIAL "Yes"
+  LABEL "Process Queue Record"
+  POSITION 7
+  MAX-WIDTH 1
+  VIEW-AS ""
+  COLUMN-LABEL "Proc!Queue"
+  ORDER 60
+
+ADD FIELD "QThread" OF "ReplTableXRef" AS integer 
+  DESCRIPTION "Queue Thread Number"
+  FORMAT "9"
+  INITIAL "0"
+  LABEL "Queue Thread #"
+  POSITION 8
+  MAX-WIDTH 32
+  VIEW-AS ""
+  COLUMN-LABEL "Thread"
+  ORDER 70
+
+ADD FIELD "UseInDiff" OF "ReplTableXRef" AS logical 
+  DESCRIPTION "Include this table in SQL Differential Scripts?"
+  FORMAT "Y/N"
+  INITIAL "Y"
+  LABEL "Include in Differential"
+  POSITION 10
+  MAX-WIDTH 1
+  VIEW-AS ""
+  COLUMN-LABEL "Diff"
+  ORDER 80
+
+ADD FIELD "SrcDB" OF "ReplTableXRef" AS character 
+  DESCRIPTION "Source Database"
+  FORMAT "x(12)"
+  INITIAL ""
+  LABEL "Source Database"
+  POSITION 11
+  MAX-WIDTH 100
+  VIEW-AS ""
+  COLUMN-LABEL "Source!Database"
+  ORDER 10
+
+ADD FIELD "SchTable" OF "ReplTableXRef" AS character 
+  DESCRIPTION "Table Name as Listed in Schema Holder Database"
+  FORMAT "x(32)"
+  INITIAL ""
+  LABEL "Schema Table"
+  POSITION 12
+  MAX-WIDTH 64
+  VIEW-AS ""
+  COLUMN-LABEL ""
+  ORDER 30
+
+ADD FIELD "TrigInst" OF "ReplTableXRef" AS logical 
+  DESCRIPTION "Have the Triggers been installed into the database?"
+  FORMAT "yes/no"
+  INITIAL "No"
+  LABEL "Trigger Installed"
+  POSITION 13
+  MAX-WIDTH 1
+  VIEW-AS ""
+  COLUMN-LABEL "Trigger!Installed"
+  ORDER 90
+
+ADD FIELD "MrgdTrig" OF "ReplTableXRef" AS logical 
+  DESCRIPTION "Does this table have Replication Triggers already?"
+  FORMAT "yes/no"
+  INITIAL "No"
+  LABEL "Merged Triggers?"
+  POSITION 14
+  MAX-WIDTH 1
+  VIEW-AS ""
+  COLUMN-LABEL "Trigs!Merged"
+  ORDER 100
+
+ADD FIELD "OrigDTrigProc" OF "ReplTableXRef" AS character 
+  DESCRIPTION "If this is a merged trigger, the original delete trigger procedure in place."
+  FORMAT "x(32)"
+  INITIAL ""
+  LABEL "Original Delete Trigger Proced"
+  POSITION 15
+  MAX-WIDTH 200
+  VIEW-AS ""
+  COLUMN-LABEL "Orig Del!Trig Proc"
+  ORDER 110
+
+ADD FIELD "OrigWTrigProc" OF "ReplTableXRef" AS character 
+  DESCRIPTION "If this is a merged trigger, the original write trigger procedure in place."
+  FORMAT "x(32)"
+  INITIAL ""
+  LABEL "Original Write Trigger Procedu"
+  POSITION 16
+  MAX-WIDTH 200
+  VIEW-AS ""
+  COLUMN-LABEL "Orig Wri!Trig Proc"
+  ORDER 120
+
+ADD INDEX "idxTblXRef" ON "ReplTableXRef" 
+  AREA "Replication Index Area"
+  UNIQUE
+  PRIMARY
+  DESCRIPTION "Table Cross-Reference Index - Primary - Unique"
+  INDEX-FIELD "SrcDB" ASCENDING 
+  INDEX-FIELD "SrcTable" ASCENDING 
+
+ADD INDEX "idxDiff" ON "ReplTableXRef" 
+  AREA "Replication Index Area"
+  DESCRIPTION "Differential Index"
+  INDEX-FIELD "UseInDiff" ASCENDING 
+
+ADD INDEX "idxThread" ON "ReplTableXRef" 
+  AREA "Replication Index Area"
+  DESCRIPTION "Thread Index"
+  INDEX-FIELD "QThread" ASCENDING 
+
+ADD TABLE "SystemFile"
+  AREA "System Data Area"
+  DESCRIPTION "Branch records, default settings for the branches, and the category assignment settings for each branch."
+  DUMP-NAME "system-f"
+
+ADD FIELD "SystemID" OF "SystemFile" AS character 
+  DESCRIPTION "System ID."
+  FORMAT "x(8)"
+  INITIAL ""
+  POSITION 2
+  MAX-WIDTH 16
+  LENGTH 0
+  ORDER 40
+
+ADD FIELD "CompanyName" OF "SystemFile" AS character 
+  DESCRIPTION "Used throughout the system to describe the branch. Most visibly in the branch selection drop down list. This is the standard field that is used to display branch description in Agility."
+  FORMAT "x(20)"
+  INITIAL ""
+  POSITION 3
+  MAX-WIDTH 40
+  LENGTH 0
+  ORDER 10
+
+ADD FIELD "DefaultPhoneFormat" OF "SystemFile" AS character 
+  DESCRIPTION "Format for 'Phone Format 1'. Only reads on the phone formats of the system id flagged as ""corporate""."
+  FORMAT "x(30)"
+  INITIAL ""
+  POSITION 6
+  MAX-WIDTH 60
+  ORDER 50
+
+ADD FIELD "DefaultCurrency" OF "SystemFile" AS character 
+  DESCRIPTION "Default currency to use for this account."
+  FORMAT "x(8)"
+  INITIAL ""
+  POSITION 7
+  MAX-WIDTH 16
+  ORDER 80
+
+ADD FIELD "DefaultZipFormat" OF "SystemFile" AS character 
+  DESCRIPTION "Default postal code format."
+  FORMAT "x(12)"
+  INITIAL "XXXXX-XXXX"
+  LABEL "Default Zip Format"
+  POSITION 9
+  MAX-WIDTH 24
+  ORDER 60
+
+ADD FIELD "DefaultGLGroups" OF "SystemFile" AS character 
+  DESCRIPTION "Default GL groups array."
+  FORMAT "x(29)"
+  INITIAL ""
+  POSITION 11
+  MAX-WIDTH 600
+  EXTENT 10
+  ORDER 70
+
+ADD FIELD "LastAcctChangeTime" OF "SystemFile" AS character 
+  DESCRIPTION "Time last account changed."
+  FORMAT "X(8)"
+  INITIAL ""
+  POSITION 14
+  MAX-WIDTH 16
+  ORDER 140
+
+ADD FIELD "LastAcctChangeDate" OF "SystemFile" AS date 
+  DESCRIPTION "Date last account changed."
+  FORMAT "99/99/9999"
+  INITIAL "01/01/1990"
+  POSITION 15
+  MAX-WIDTH 4
+  ORDER 130
+
+ADD FIELD "UpdateBy" OF "SystemFile" AS character 
+  DESCRIPTION "ID of the user that updated the record."
+  FORMAT "x(12)"
+  INITIAL ""
+  LABEL "update-by"
+  POSITION 16
+  MAX-WIDTH 24
+  HELP "update-by"
+  ORDER 260
+
+ADD FIELD "UpdateDate" OF "SystemFile" AS date 
+  DESCRIPTION "Date the record was last updated."
+  FORMAT "99/99/99"
+  INITIAL ?
+  LABEL "update-date"
+  POSITION 17
+  MAX-WIDTH 4
+  HELP "update-date"
+  ORDER 270
+
+ADD FIELD "UpdateTime" OF "SystemFile" AS character 
+  DESCRIPTION "Time the record was last updated."
+  FORMAT "x(8)"
+  INITIAL ""
+  LABEL "update-time"
+  POSITION 18
+  MAX-WIDTH 16
+  HELP "update-time"
+  ORDER 280
+
+ADD FIELD "CreatedBy" OF "SystemFile" AS character 
+  DESCRIPTION "User ID that created the record."
+  FORMAT "x(12)"
+  INITIAL ""
+  LABEL "CREATED-BY"
+  POSITION 19
+  MAX-WIDTH 24
+  HELP "CREATED-BY"
+  ORDER 290
+
+ADD FIELD "CreatedDate" OF "SystemFile" AS date 
+  DESCRIPTION "Date when record was created."
+  FORMAT "99/99/99"
+  INITIAL ?
+  LABEL "CREATED-DATE"
+  POSITION 20
+  MAX-WIDTH 4
+  HELP "CREATED-DATE"
+  ORDER 300
+
+ADD FIELD "UseApVoucherEntryDefaults" OF "SystemFile" AS logical 
+  DESCRIPTION "Use AP voucher entry defaults [Y,N]."
+  FORMAT "Yes/No"
+  INITIAL "NO"
+  LABEL "Use A/P Voucher Entry Defaults"
+  POSITION 26
+  MAX-WIDTH 1
+  COLUMN-LABEL "Use A/P Voucher Entry Defaults"
+  ORDER 160
+
+ADD FIELD "DefaultCountry" OF "SystemFile" AS character 
+  DESCRIPTION "Default country."
+  FORMAT "X(8)"
+  INITIAL ""
+  LABEL "Country"
+  POSITION 27
+  MAX-WIDTH 16
+  ORDER 350
+
+ADD FIELD "NonstockNumeric" OF "SystemFile" AS decimal 
+  DESCRIPTION "Field identifying the numbering sequence for non-stock items."
+  FORMAT "9999999999"
+  INITIAL "0"
+  LABEL "Non-stock Numeric"
+  POSITION 30
+  MAX-WIDTH 15
+  DECIMALS 0
+  ORDER 380
+
+ADD FIELD "NonstockBranch" OF "SystemFile" AS character 
+  DESCRIPTION "Standard prefix that will be assigned to non-stock items created from SO/Quote Entry or Reman Input Entry when not auto tagged."
+  FORMAT "X(12)"
+  INITIAL ""
+  LABEL "Non-stock Standard Prefix"
+  POSITION 31
+  MAX-WIDTH 24
+  ORDER 390
+
+ADD FIELD "corporate" OF "SystemFile" AS logical 
+  DESCRIPTION "Corporate? [Y,N]"
+  FORMAT "Yes/No"
+  INITIAL "no"
+  POSITION 32
+  MAX-WIDTH 1
+  ORDER 400
+
+ADD FIELD "rxlaser" OF "SystemFile" AS logical 
+  DESCRIPTION "RxLaser? [Y,N]"
+  FORMAT "Yes/No"
+  INITIAL "no"
+  LABEL "rxlaser"
+  POSITION 33
+  MAX-WIDTH 1
+  ORDER 410
+
+ADD FIELD "RemitToCustDivLink" OF "SystemFile" AS character 
+  DESCRIPTION "Value of the link-cust-div field in the cust-div record that will be used as the remit-to division for the branch represented by this system-file record."
+  FORMAT "x(96)"
+  INITIAL ""
+  LABEL "Remit-to Division"
+  POSITION 35
+  MAX-WIDTH 192
+  COLUMN-LABEL "Remit-to Division"
+  ORDER 430
+
+ADD FIELD "FormsCustDivLink" OF "SystemFile" AS character 
+  DESCRIPTION "Value of the link-cust-div field in the cust-div record that will be used as the forms division for the branch represented by this system-file record.
+"
+  FORMAT "x(96)"
+  INITIAL ""
+  LABEL "Forms Division"
+  POSITION 36
+  MAX-WIDTH 192
+  COLUMN-LABEL "Forms Division"
+  ORDER 440
+
+ADD FIELD "TranPrefix" OF "SystemFile" AS character 
+  DESCRIPTION "User defined branch identifier that will print before the tran number on all forms."
+  FORMAT "x(4)"
+  INITIAL ""
+  LABEL "Tran Prefix"
+  POSITION 38
+  MAX-WIDTH 8
+  ORDER 460
+
+ADD FIELD "AllowPermanentShipTo" OF "SystemFile" AS logical 
+  DESCRIPTION "This field gives the branch the ability to control the creation of permanent ship-to records from order entry/quotes. Yes indicates the branch users are allowed to create permanent ship-to records during order entry from a temporary address change. No indicates the branch users are not allowed to create permanent ship-to records during order entry from a temporary address change.  This will save the address change as a temporary address on this order only without giving them the option of creating a permanent ship-to record.
+"
+  FORMAT "Yes/No"
+  INITIAL "no"
+  POSITION 39
+  MAX-WIDTH 1
+  ORDER 470
+
+ADD FIELD "PayTermsCode" OF "SystemFile" AS character 
+  DESCRIPTION "Pay terms code selected for this tran."
+  FORMAT "x(12)"
+  INITIAL ""
+  LABEL "Pay Terms Code"
+  POSITION 40
+  MAX-WIDTH 24
+  ORDER 480
+
+ADD FIELD "LIFOUpdMethod" OF "SystemFile" AS character 
+  DESCRIPTION "Defines LIFO update method used. ""D"" = Double Extension Method (Base Year is never changed) OR ""L"" = Link Chain Method (Base Year is updated with each update with current year activity)."
+  FORMAT "x(1)"
+  INITIAL "D"
+  LABEL "LIFO Update Method"
+  POSITION 42
+  MAX-WIDTH 2
+  ORDER 500
+
+ADD FIELD "CreatedTime" OF "SystemFile" AS character 
+  DESCRIPTION "Time the record was created."
+  FORMAT "x(8)"
+  INITIAL ?
+  LABEL "Created Time"
+  POSITION 43
+  MAX-WIDTH 16
+  ORDER 510
+
+ADD FIELD "SeqShared" OF "SystemFile" AS logical 
+  DESCRIPTION "Indicates whether this branch gets the sequence number for the transaction id of po_header, so_header, quote_header, or wo_header from a different branch."
+  FORMAT "Yes/No"
+  INITIAL "no"
+  LABEL "Share Tran Seq"
+  POSITION 44
+  MAX-WIDTH 1
+  ORDER 520
+
+ADD FIELD "SeqSystemID" OF "SystemFile" AS character 
+  DESCRIPTION "When seq_shared = YES, this field indicates which branch the sequence number for the transaction id of po_header, so_header, quote_header, or wo_header will come from."
+  FORMAT "x(8)"
+  INITIAL ""
+  LABEL "Tran Seq Branch"
+  POSITION 45
+  MAX-WIDTH 16
+  ORDER 530
+
+ADD FIELD "DefaultPhoneFormat2" OF "SystemFile" AS character 
+  DESCRIPTION "Format for phone format 2. Only reads on the phone formats of the system id flagged as ""corporate""."
+  FORMAT "x(30)"
+  INITIAL ""
+  LABEL "Default Phone Format 2"
+  POSITION 46
+  MAX-WIDTH 60
+  ORDER 540
+
+ADD FIELD "DefaultPhoneFormat3" OF "SystemFile" AS character 
+  DESCRIPTION "Format for phone format 3. Only reads on the phone formats of the system id flagged as ""corporate""."
+  FORMAT "x(30)"
+  INITIAL ""
+  LABEL "Default Phone Format 3"
+  POSITION 47
+  MAX-WIDTH 60
+  ORDER 550
+
+ADD FIELD "PhoneFormatDesc" OF "SystemFile" AS character 
+  DESCRIPTION "Description field for phone format #1. Only reads on the phone formats of the system id flagged as ""corporate""."
+  FORMAT "x(12)"
+  INITIAL "Format 1"
+  LABEL "Phone Format Description"
+  POSITION 48
+  MAX-WIDTH 24
+  ORDER 560
+
+ADD FIELD "PhoneFormatDesc2" OF "SystemFile" AS character 
+  DESCRIPTION "Description field for phone format #2. Only reads on the phone formats of the system id flagged as ""corporate""."
+  FORMAT "x(12)"
+  INITIAL "Format 2"
+  LABEL "Phone Format Description 2"
+  POSITION 49
+  MAX-WIDTH 24
+  ORDER 570
+
+ADD FIELD "PhoneFormatDesc3" OF "SystemFile" AS character 
+  DESCRIPTION "Description field for phone format #3. Only reads on the phone formats of the system id flagged as ""corporate""."
+  FORMAT "x(12)"
+  INITIAL "Format 3"
+  LABEL "Phone Format Description 3"
+  POSITION 50
+  MAX-WIDTH 24
+  ORDER 580
+
+ADD FIELD "PhoneFormatForBranch" OF "SystemFile" AS int64 
+  DESCRIPTION "Format code that determines the format of the phone # for general phone # use at a branch level."
+  FORMAT "9"
+  INITIAL "1"
+  LABEL "Phone Format for Branch"
+  POSITION 51
+  MAX-WIDTH 4
+  ORDER 590
+
+ADD FIELD "PickTicketFax" OF "SystemFile" AS character 
+  DESCRIPTION "Fax # used when printing Pick Tickets, Pick Reports, Delivery Tickets and RMAs if the ""use branch fax"" option is selected."
+  FORMAT "x(30)"
+  INITIAL ""
+  LABEL "Pick Ticket Fax"
+  POSITION 52
+  MAX-WIDTH 60
+  ORDER 600
+
+ADD FIELD "PickTicketEmail" OF "SystemFile" AS character 
+  DESCRIPTION "Email address used when printing Pick Tickets, Pick Reports, Delivery Tickets and RMAs if the ""use branch email"" option is selected."
+  FORMAT "x(50)"
+  INITIAL ""
+  LABEL "Pick Ticket Email"
+  POSITION 53
+  MAX-WIDTH 100
+  ORDER 610
+
+ADD FIELD "GLComponentLabel" OF "SystemFile" AS character 
+  DESCRIPTION "Label or description of the G/L Components. This is only assigned on the Corporate branch record."
+  FORMAT "x(12)"
+  INITIAL ""
+  LABEL "G/L Component Label"
+  POSITION 57
+  MAX-WIDTH 260
+  COLUMN-LABEL ""
+  EXTENT 10
+  ORDER 650
+
+ADD FIELD "GLComponent" OF "SystemFile" AS character 
+  DESCRIPTION "GL Group values that will be concatenated to form a G/L account."
+  FORMAT "x(29)"
+  INITIAL ""
+  LABEL "GL Components"
+  POSITION 58
+  MAX-WIDTH 600
+  COLUMN-LABEL "GL Components"
+  EXTENT 10
+  ORDER 640
+
+ADD FIELD "GlobalLocNo" OF "SystemFile" AS character 
+  DESCRIPTION "A GLN provides a standard means to identify legal entities, trading parties, and locations to support the requirements of E-Commerce.  The GLN is a 14 digit number made up of the EAN.UCC Company Prefix, a location reference, and a check digit.  The location reference is a number assigned by the holder of the company prefix to uniquely identify a location within a company."
+  FORMAT "x(13)"
+  INITIAL ""
+  LABEL "Global Location Number"
+  POSITION 59
+  MAX-WIDTH 26
+  ORDER 670
+
+ADD FIELD "TaxcodesUpdatedByImport" OF "SystemFile" AS logical 
+  DESCRIPTION "Indicates if the Sales Tax Import will automatically make changes to the tax authorities that are assigned to existing tax codes."
+  FORMAT "Yes/No"
+  INITIAL "no"
+  LABEL "Update Taxcodes"
+  POSITION 60
+  MAX-WIDTH 16
+  ORDER 680
+
+ADD FIELD "SCACCode" OF "SystemFile" AS character 
+  DESCRIPTION "Default SCAC (Standard Carrier Alpha Code) for the branch."
+  FORMAT "x(4)"
+  INITIAL ""
+  LABEL "SCAC Code"
+  POSITION 61
+  MAX-WIDTH 8
+  ORDER 690
+
+ADD FIELD "LIFOSource" OF "SystemFile" AS character 
+  DESCRIPTION "Method chosen to construct LIFO cost and quantity information. Values are: 'Average Cost' = Average Cost & Current Qty on Hand, 'Frozen Cost' = Frozen Cost & Physical Count Qty, 'PO Cost' = PO Cost & Current Qty on Hand."
+  FORMAT "x(12)"
+  INITIAL "Average Cost"
+  LABEL "LIFO Source"
+  POSITION 62
+  MAX-WIDTH 24
+  ORDER 700
+
+ADD FIELD "LegalEntity" OF "SystemFile" AS character 
+  DESCRIPTION "Indicates Legal Entity that this branch is a part of.  Only currently used when searching for Tax Resale Certificates."
+  FORMAT "x(16)"
+  INITIAL ""
+  LABEL "Legal Entity"
+  POSITION 63
+  MAX-WIDTH 32
+  ORDER 730
+
+ADD FIELD "BranchZoneAbbreviation" OF "SystemFile" AS character 
+  DESCRIPTION "Identifies the abbreviated value for the user-selected time zone for this specific branch."
+  FORMAT "x(4)"
+  INITIAL ""
+  LABEL "Branch Zone Abbreviation"
+  POSITION 64
+  MAX-WIDTH 8
+  ORDER 720
+
+ADD FIELD "BranchGMTOffset" OF "SystemFile" AS character 
+  DESCRIPTION "Identifies the Greenwich Mean Time offset value for this specific branch, derived from the branch zone abbreviation selected by the user."
+  FORMAT "x(6)"
+  INITIAL ""
+  LABEL "Branch GMT Offset"
+  POSITION 65
+  MAX-WIDTH 12
+  ORDER 710
+
+ADD FIELD "AutoAssignCustIncLeadZeroes" OF "SystemFile" AS logical 
+  DESCRIPTION "Determines if the auto assigned customer ID will contain leading zeroes."
+  FORMAT "Yes/No"
+  INITIAL "No"
+  LABEL "Include Leading Zeroes"
+  POSITION 66
+  MAX-WIDTH 1
+  VIEW-AS ""
+  COLUMN-LABEL ""
+  ORDER 940
+
+ADD FIELD "USPSZipProdObject" OF "SystemFile" AS character 
+  DESCRIPTION "USPS API Object name for Production USPS Zip Code Lookup"
+  FORMAT "x(20)"
+  INITIAL "ShippingAPI.dll"
+  LABEL "Usps Zip Prod Object"
+  POSITION 67
+  MAX-WIDTH 40
+  ORDER 800
+
+ADD FIELD "USPSZipProdUrl" OF "SystemFile" AS character 
+  DESCRIPTION "URL Page for Production USPS Zip Code Lookup"
+  FORMAT "x(50)"
+  INITIAL "Production.ShippingAPIs.com"
+  LABEL "Usps Zip Prod Url"
+  POSITION 68
+  MAX-WIDTH 100
+  ORDER 790
+
+ADD FIELD "USPSZipTestObject" OF "SystemFile" AS character 
+  DESCRIPTION "USPS API Object name for Test USPS Zip Code Lookup"
+  FORMAT "x(50)"
+  INITIAL "ShippingAPITest.dll"
+  LABEL "Usps Zip Test Object"
+  POSITION 69
+  MAX-WIDTH 100
+  ORDER 780
+
+ADD FIELD "USPSZipTestUrl" OF "SystemFile" AS character 
+  DESCRIPTION "URL Page for Test USPS Zip Code Lookup"
+  FORMAT "x(50)"
+  INITIAL "Testing.ShippingAPIs.com"
+  LABEL "Usps Zip Test Url"
+  POSITION 70
+  MAX-WIDTH 100
+  ORDER 770
+
+ADD FIELD "USPSZipTestSuccessful" OF "SystemFile" AS logical 
+  DESCRIPTION "Indicates if the customer has properly tested their Zip code lookup User ID."
+  FORMAT "Yes/No"
+  INITIAL "no"
+  LABEL "Usps Zip Test Successful"
+  POSITION 71
+  MAX-WIDTH 1
+  ORDER 760
+
+ADD FIELD "USPSZipUserID" OF "SystemFile" AS character 
+  DESCRIPTION "User ID assigned by the United States Postal Service for using the Zip Code lookup function."
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "Usps Zip User Id"
+  POSITION 72
+  MAX-WIDTH 40
+  ORDER 750
+
+ADD FIELD "PromptUpdTempAddr" OF "SystemFile" AS logical 
+  DESCRIPTION "Determines if Create Permanent Ship-To message should prompt after a temporary address is updated on a quote or order and the branch is set to allow creation of permanent ship-to�s."
+  FORMAT "Yes/No"
+  INITIAL "no"
+  LABEL "Prompt When Updating Temporary"
+  POSITION 73
+  MAX-WIDTH 1
+  VIEW-AS ""
+  COLUMN-LABEL "Prompt When Updating Temporary"
+  ORDER 820
+
+ADD FIELD "DoCurrencyExchange" OF "SystemFile" AS logical 
+  DESCRIPTION "Indicates if the system will perform currency exchange functions through purchasing and A/P."
+  FORMAT "Yes/No"
+  INITIAL "no"
+  LABEL "Do Currency Exchange A/P"
+  POSITION 74
+  MAX-WIDTH 1
+  VIEW-AS ""
+  COLUMN-LABEL ""
+  ORDER 810
+
+ADD FIELD "LIFOPurchaseType" OF "SystemFile" AS character 
+  DESCRIPTION "Identifies the Purchase Type that that will be used when searching for allocator sets when updating LIFO cost."
+  FORMAT "x(8)"
+  INITIAL ""
+  LABEL "LIFO Purchase Type"
+  POSITION 75
+  MAX-WIDTH 16
+  VIEW-AS ""
+  COLUMN-LABEL ""
+  ORDER 830
+
+ADD FIELD "GLConsignPosAdj" OF "SystemFile" AS character 
+  DESCRIPTION "Determine GL posting for positive item adjustments and physical inventory variances for consignment items. Valid values are: ""Use Consignment Clearing"" and ""Use Reason Code and PI Accts""."
+  FORMAT "x(28)"
+  INITIAL "Use Consignment Clearing"
+  LABEL "G/L For Pos Consign Adj"
+  POSITION 76
+  MAX-WIDTH 56
+  VIEW-AS ""
+  COLUMN-LABEL ""
+  ORDER 850
+
+ADD FIELD "GLConsignNegAdj" OF "SystemFile" AS character 
+  DESCRIPTION "Determine GL posting for negative item adjustments and physical inventory variances for consignment items. Valid values are: ""Use Consignment Clearing"" and ""Use Reason Code and PI Accts""."
+  FORMAT "x(28)"
+  INITIAL "Use Consignment Clearing"
+  LABEL "G/L For Neg Consign Adj"
+  POSITION 77
+  MAX-WIDTH 56
+  VIEW-AS ""
+  COLUMN-LABEL ""
+  ORDER 840
+
+ADD FIELD "DoCurrencyExchangeAr" OF "SystemFile" AS logical 
+  DESCRIPTION "Indicates if the system will perform currency exchange functions through SO and A/R."
+  FORMAT "Yes/No"
+  INITIAL "No"
+  LABEL "Do Currency Exchange A/R"
+  POSITION 78
+  MAX-WIDTH 1
+  VIEW-AS ""
+  COLUMN-LABEL ""
+  ORDER 860
+
+ADD FIELD "NonstockPoPrefix" OF "SystemFile" AS character 
+  DESCRIPTION "Prefix that will be assigned to non-stock items created from SO/Quote Entry or Reman Input Entry with an Auto Tag of PO."
+  FORMAT "x(12)"
+  INITIAL ""
+  LABEL "Non-stock PO Prefix"
+  POSITION 79
+  MAX-WIDTH 24
+  VIEW-AS ""
+  COLUMN-LABEL ""
+  ORDER 880
+
+ADD FIELD "NonstockRemanPrefix" OF "SystemFile" AS character 
+  DESCRIPTION "Prefix that will be assigned to non-stock items created from SO/Quote Entry or Reman Input Entry with an Auto Tag of RM, PF, or Cut."
+  FORMAT "x(12)"
+  INITIAL ""
+  LABEL "Non-stock Reman Prefix"
+  POSITION 80
+  MAX-WIDTH 24
+  VIEW-AS ""
+  COLUMN-LABEL ""
+  ORDER 890
+
+ADD FIELD "NonstockTransferPrefix" OF "SystemFile" AS character 
+  DESCRIPTION "Prefix that will be assigned to non-stock items created from SO/Quote Entry or Reman Input Entry with an Auto Tag of BT or AT."
+  FORMAT "x(12)"
+  INITIAL ""
+  LABEL "Non-stock Transfer Prefix"
+  POSITION 81
+  MAX-WIDTH 24
+  VIEW-AS ""
+  COLUMN-LABEL ""
+  ORDER 870
+
+ADD FIELD "SystemFileGUID" OF "SystemFile" AS character 
+  DESCRIPTION "Globally unique identifier for this SystemFile record."
+  FORMAT "x(200)"
+  INITIAL ""
+  LABEL "System File GUID"
+  POSITION 82
+  MAX-WIDTH 400
+  VIEW-AS ""
+  COLUMN-LABEL "System File GUID"
+  ORDER 900
+
+ADD FIELD "RestrictedBranch" OF "SystemFile" AS logical 
+  DESCRIPTION "If this value is set to yes, this branch will not be visible if users do not have permission."
+  FORMAT "yes/no"
+  INITIAL "no"
+  LABEL "Restricted Branch"
+  POSITION 83
+  MAX-WIDTH 1
+  VIEW-AS ""
+  COLUMN-LABEL "Restricted Branch"
+  ORDER 910
+
+ADD FIELD "AutoAssignCustCode" OF "SystemFile" AS logical 
+  DESCRIPTION "Determines if the customer ID is auto assigned when creating a new customer."
+  FORMAT "Yes/No"
+  INITIAL "No"
+  LABEL "Auto assign customer ID"
+  POSITION 84
+  MAX-WIDTH 1
+  VIEW-AS ""
+  COLUMN-LABEL ""
+  ORDER 920
+
+ADD FIELD "AutoAssignSupplierCode" OF "SystemFile" AS logical 
+  DESCRIPTION "Determines if the Supplier ID is auto assigned when creating a new Supplier."
+  FORMAT "Yes/No"
+  INITIAL "No"
+  LABEL "Auto assign Supplier ID"
+  POSITION 85
+  MAX-WIDTH 1
+  VIEW-AS ""
+  COLUMN-LABEL ""
+  ORDER 930
+
+ADD FIELD "AutoAssignSuppIncLeadZeroes" OF "SystemFile" AS logical 
+  DESCRIPTION "Determines if the auto assigned supplier ID will contain leading zeroes."
+  FORMAT "Yes/No"
+  INITIAL "No"
+  LABEL "Include Leading Zeroes"
+  POSITION 86
+  MAX-WIDTH 1
+  VIEW-AS ""
+  COLUMN-LABEL ""
+  ORDER 950
+
+ADD FIELD "RequireCustomerHomeBranch" OF "SystemFile" AS logical 
+  DESCRIPTION "Indicates if a home branch is required for customers."
+  FORMAT "Yes/No"
+  INITIAL "No"
+  LABEL "Require Customer Home Branch"
+  POSITION 87
+  MAX-WIDTH 1
+  VIEW-AS ""
+  COLUMN-LABEL ""
+  ORDER 960
+
+ADD FIELD "AllowWebUI" OF "SystemFile" AS logical 
+  DESCRIPTION "Determines if branch allows access to the new WEB UI."
+  FORMAT "Yes/No"
+  INITIAL "No"
+  LABEL "Allow WEB UI"
+  POSITION 88
+  MAX-WIDTH 1
+  VIEW-AS ""
+  COLUMN-LABEL ""
+  ORDER 970
+
+ADD INDEX "SystemFileIdx" ON "SystemFile" 
+  AREA "System Index Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "SystemID" ASCENDING 
+
+ADD INDEX "CompanyWordIdx" ON "SystemFile" 
+  AREA "System Index Area"
+  WORD
+  INDEX-FIELD "CompanyName" ASCENDING 
+
+ADD INDEX "CorporateIdx" ON "SystemFile" 
+  AREA "System Index Area"
+  INDEX-FIELD "Corporate" ASCENDING 
+
+ADD INDEX "SystemIDWordIdx" ON "SystemFile" 
+  AREA "System Index Area"
+  WORD
+  INDEX-FIELD "SystemID" ASCENDING 
+
+ADD INDEX "UpdateDateTime" ON "SystemFile" 
+  AREA "System Index Area"
+  INDEX-FIELD "UpdateDate" DESCENDING 
+  INDEX-FIELD "UpdateTime" DESCENDING 
+
+ADD INDEX "XSeqSystemID" ON "SystemFile" 
+  AREA "System Index Area"
+  INDEX-FIELD "SeqSystemID" ASCENDING 
+
+ADD INDEX "XSystemFileGUID" ON "SystemFile" 
+  AREA "System Index Area"
+  INDEX-FIELD "SystemFileGUID" ASCENDING 
+
+.
+PSC
+cpstream=ISO8859-1
+.
+0000105567

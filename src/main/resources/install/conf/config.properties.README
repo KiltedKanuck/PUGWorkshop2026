@@ -1,0 +1,60 @@
+# Configuration Properties Reference
+# =========================================
+# This file documents the direct keys defined in config.properties.
+# Runtime and task parameters are documented by the utility output.
+# Copy this to config.properties and modify values as needed.
+
+# PASOE instance name
+#pasoe.instance.name=
+#primary.ablapp.name=
+#primary.webapp.name=
+#monitor.ablapp.name=
+#monitor.webapp.name=
+
+# API version used by installer templates
+#application.api.version=
+
+# Application domain name and code
+#application.domain.name=
+#application.domain.code=
+
+# OERealm token user and code
+#application.realm.user=
+#application.realm.code=
+
+# PASOE network ports
+#application.port.http=
+#application.port.https=
+#application.port.ajp=
+#application.port.shut=
+#application.port.health=
+
+# Database host and port settings
+#application.db.skip=
+#application.db.name=
+#application.db.host.name=
+#application.db.port.service=
+#application.db.port.min=
+#application.db.port.max=
+#application.db.lockwait=
+#application.db.codepage=
+#application.db.collation=
+
+# Account used for Tomcat Manager and OEManager
+#tomcat.management.user=
+#tomcat.management.code=
+
+# Tomcat executor threads
+#tomcat.executor.threads=
+#tomcat.executor.minspare=
+
+# Tomcat connector queues
+tomcat.queue.size=
+
+# Tomcat encodings
+tomcat.uri.encoding=UTF-8
+
+# Tomcat JVM heap size (MB)
+#tomcat.jvm.xmx.mb=
+#tomcat.jvm.xms.mb=
+#tomcat.jvm.newsize.mb=

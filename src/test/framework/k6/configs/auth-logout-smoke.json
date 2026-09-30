@@ -1,0 +1,18 @@
+{
+  "meta": {
+    "name": "auth-logout-smoke",
+    "description": "Auth smoke run with per-iteration logout - 1 VU, 1 iteration. Validates that each VU can authenticate AND successfully log out. Use to verify PASOE logout endpoint behavior.",
+    "version": 1
+  },
+  "run": {
+    "profile": "smoke"
+  },
+  "env": {
+    "BASE_URL":                    "http://127.0.0.1:7780",
+    "MIN_THINK_TIME":              0,
+    "MAX_THINK_TIME":              0,
+    "SEED_RECORD_MAX":             100000,
+    "AUTH_LOGOUT_EACH_ITERATION":  true,
+    "AUTH_DEBUG":                  false
+  }
+}

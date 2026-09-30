@@ -1,0 +1,1762 @@
+/*
+ * This script is designed to compile the UI components and build deployable artifacts.
+ * You must be attached to the Progress VPN to build locally.
+ *
+ * This project requires ablunit to "test", along with corelib, netlib, and serveradmin
+ * for internal mechanics (runtime) and testing.
+ *
+ * This build process uses the OpenEdge DevOps Framework (OEDF)
+ * https://docs.progress.com/bundle/openedge-devops-framework/page/Learn-About-the-OpenEdge-DevOps-Framework.html
+ */
+
+import com.progress.gradle.abl.tasks.*
+import groovy.io.FileType
+import groovy.json.*
+import java.time.*
+import java.lang.management.ManagementFactory
+import com.sun.management.OperatingSystemMXBean
+import com.bmuschko.gradle.docker.tasks.image.*
+import com.bmuschko.gradle.docker.tasks.container.*
+
+/*
+ * See settings.gradle for plugin version information and repository location:
+ *  https://bed-artifactory.bedford.progress.com/artifactory/oe-maven-[develop|release]
+ *
+ * Plugins for use with the build exist at the following paths from the above:
+ *   /com/jfrog/artifactory/com.jfrog.artifactory.gradle.plugin/
+ *   /com/google/osdetector/com.google.osdetector.gradle.plugin/
+ *   /net/nemerosa/versioning/net.nemerosa.versioning.gradle.plugin/
+ *   /progress/openedge/abl-base/progress.openedge.abl-base.gradle.plugin/
+ *
+ * Versions for these plugins is defined in gradle.properties and used in settings.gradle
+ */
+plugins {
+    id "base"
+    id "com.jfrog.artifactory"
+    id "com.google.osdetector"
+    id "net.nemerosa.versioning"
+    id "com.progress.openedge-version"
+    id "progress.openedge.abl-base"
+    id "com.bmuschko.docker-remote-api"
+}
+
+group = "com.progress.openedge.abltools"
+
+// Obtain information about the available system resources, if needed later.
+int cpuCount = Runtime.runtime.availableProcessors()
+def osBean = ManagementFactory.getOperatingSystemMXBean() as OperatingSystemMXBean
+long totalMemoryBytes = osBean.totalPhysicalMemorySize
+long totalMemoryGB = totalMemoryBytes / (1024 * 1024 * 1024)
+logger.quiet("System Resources: ${cpuCount} CPUs with ${totalMemoryGB}GB memory")
+
+/**
+ * Build-time property normalization and validation helpers.
+ *
+ * CRITICAL: TeamCity configuration parameters accessed via project.findProperty() MUST be
+ * defined with the "system." prefix in TeamCity (e.g., system.build_stage).
+ * Plain param() values in TeamCity are NOT visible to Gradle unless prefixed with "system."
+ * or passed explicitly as -P flags as Gradle project properties.
+ *
+ * Property resolution order for project.findProperty():
+ *   1. System properties (eg. "system." prefix) - HIGHEST PRIORITY (overrides everything)
+ *   2. gradle.properties file
+ *   3. Fallback value in code - LOWEST PRIORITY
+ *
+ */
+
+def getSafePropValue = { String key, Object fallback = "" ->
+    (project.findProperty(key) ?: fallback).toString().trim()
+}
+
+def requirePropValue = { String key, String value, String context = "" ->
+    if (!value) {
+        String suffix = context ? " ${context}" : ""
+        throw new GradleException("${key} must be set${suffix}")
+    }
+    value
+}
+
+def requireNumericPropValue = { String key, String value, String context = "" ->
+    requirePropValue(key, value, context)
+    if (!(value ==~ /\d+/)) {
+        String suffix = context ? " ${context}" : ""
+        throw new GradleException("${key} must be numeric${suffix}: '${value}'")
+    }
+    value
+}
+
+def requireVersionFormat = { String key, String value ->
+    if (value.split("\\.").length < 3) {
+        throw new GradleException("${key} must have at least 3 version elements, got: '${value}'")
+    }
+    value
+}
+
+// Determine the OS environment for env.dlcType
+String dlcType = System.getenv("dlcType") ?: project.findProperty("dlcType") ?: null
+
+// For hints on which OS are detected
+// @see https://github.com/trustin/os-maven-plugin/blob/master/src/main/java/kr/motd/maven/os/Detector.java
+if (dlcType == null) {
+    if (osdetector.os == "linux") {
+        dlcType = "linuxx86_64"
+    } else if (osdetector.os == "windows" && osdetector.arch == "x86_32") {
+        dlcType = "nt"
+    } else if (osdetector.os == "windows" && osdetector.arch == "x86_64") {
+        dlcType = "nt64"
+    }
+    logger.quiet("Detected dlcType: $dlcType")
+}
+
+// We MUST have a dlcType defined as OS-detection is not enough for this determination
+if (dlcType == null) {throw new GradleException("dlcType not set")}
+
+// Change to lowercase for further checks, making sure we have a supported type defined
+dlcType = dlcType.toLowerCase()
+if (!["nt", "nt64", "linuxx86_64"].contains(dlcType)) {
+    throw new GradleException("dlcType not set to one of [nt, nt64, linuxx86_64]: $dlcType")
+}
+
+// This is a server-based project so there are no GUI components; default explicitly to "tty"
+String packageType = "tty"
+logger.quiet("Detected package: $packageType")
+
+// Obtain OE version via openedge-version plugin (as openedge_version) or use a custom (local) version
+String oe_build_version = System.getenv("build_target_oe_version") ?: project.findProperty("build_target_oe_version") ?: openedge_version
+logger.quiet("OE Build Version: $oe_build_version")
+requireVersionFormat("OE version", oe_build_version)
+
+// Obtain release stage via openedge-version plugin (as openedge_release_stage) or use a default of "develop"
+// This should return either "develop" or "release" to create a folder name of "oe-maven-[develop|release]"
+String maven_build_type = getSafePropValue("build_stage", openedge_release_stage ?: "develop")
+logger.quiet("Using Build Type: $maven_build_type")
+
+// Determine the compiler options as provided via an ablCompilerOpts property;
+// one or more of req-ret-val, req-full-kw, req-full-name, req-fld-qual can be used, in a comma-delimited value
+String[] ablCompOpts = getSafePropValue("ablCompilerOpts").split(",")
+
+// Lets us run a subset of the tests. All tests will be compiled; only these will be actually run
+String ablTestFilter = getSafePropValue("ablTestFilter", "**/*.r")
+
+// Set a default list of tests to be excluded.
+ext.ablTestExclusions = ["Mock/**"]
+
+// Global debug flag
+Boolean dbgProp = getSafePropValue("dbg", "false").toBoolean()
+
+// Folder where source code dependencies are kept
+File ablLibs = file("$buildDir/lib")
+List<File> libSrcPaths = []
+
+// Should be in abl.pctTaskArgs but it has to be created first, otherwise we get a "null" error
+// the dir is created in ResolveOpenEdgeDependencies.doFirst
+File avmTempDir = file("$buildDir/temp")
+
+// Database name as used for compilation and deployment purposes.
+String configuredDbName = getSafePropValue("db_name")
+Boolean useDatabase = configuredDbName && !configuredDbName.equalsIgnoreCase("NONE")
+String appDatabaseName = useDatabase ? configuredDbName : ""
+logger.quiet("Database Support: " + (useDatabase ? "enabled (${appDatabaseName})" : "disabled (db_name is empty or NONE)"))
+
+// Templatized token values used when tailoring installer resources.
+String classPackageName = getSafePropValue("package_name", "OpenEdge.${rootProject.name.toUpperCase()}")
+String classPathPackage = classPackageName.replace(".", "/")
+logger.quiet("App Class Package: $classPackageName ($classPathPackage)")
+
+// Names for tokenization of PASOE and OEAR installation artifacts.
+String pasoeInstanceName = requirePropValue("pasoe_instance_name", getSafePropValue("pasoe_instance_name", "oels")).toLowerCase()
+String pasoeInstanceHttp = requireNumericPropValue("pasoe_instance_http", getSafePropValue("pasoe_instance_http", "7780"))
+String pasoeInstanceHttps = requireNumericPropValue("pasoe_instance_https", getSafePropValue("pasoe_instance_https", "7783"))
+String pasoeInstanceAjp = requireNumericPropValue("pasoe_instance_ajp", getSafePropValue("pasoe_instance_ajp", "7782"))
+String pasoeInstanceShut = requireNumericPropValue("pasoe_instance_shut", getSafePropValue("pasoe_instance_shut", "7784"))
+String pasoeInstanceHealth = requireNumericPropValue("pasoe_instance_health", getSafePropValue("pasoe_instance_health", "7785"))
+String oearPrimaryAblAppName = requirePropValue("oear_primary_ablapp_name", getSafePropValue("oear_primary_ablapp_name", "LoadSuite"))
+String oearPrimaryWebAppName = requirePropValue("oear_primary_webapp_name", getSafePropValue("oear_primary_webapp_name", "loadsuite"))
+String oearMonitorAblAppName = requirePropValue("oear_monitor_ablapp_name", getSafePropValue("oear_monitor_ablapp_name", "LoadMonitor"))
+String oearMonitorWebAppName = requirePropValue("oear_monitor_webapp_name", getSafePropValue("oear_monitor_webapp_name", "monitor"))
+
+// Names and passcodes for management and authentication.
+String pasoeDomainName = getSafePropValue("pasoe_domain_name", pasoeInstanceName)
+String pasoeDomainCode = getSafePropValue("pasoe_domain_code", oearPrimaryAblAppName)
+String pasoeRealmUser = getSafePropValue("pasoe_realm_user", "RealmClient")
+String pasoeRealmCode = getSafePropValue("pasoe_realm_code", "OELoadSuite")
+String pasoeManagerUser = getSafePropValue("pasoe_manager_user", "tomcat")
+String pasoeManagerCode = getSafePropValue("pasoe_manager_code", "tomcat")
+
+// Parameters for sizing of the PASOE instance based on expected capacity at scale.
+String numMsAgentsMax = requireNumericPropValue("pasoe_num_msagent_max", getSafePropValue("pasoe_num_msagent_max", "2"))
+// By default, set the minimum number of MSAgents to be the greater of 2 or 75% of the maximum.
+String numMsAgentsMin = requireNumericPropValue("pasoe_num_msagent_min",
+    getSafePropValue("pasoe_num_msagent_min",
+        "${Math.max(2, Math.round(numMsAgentsMax.toInteger() * 0.75))}" // Derive from Maximum MSAgents (rounded to nearest whole number)
+    )
+)
+String numAgentConns = requireNumericPropValue("pasoe_num_agent_conns", getSafePropValue("pasoe_num_agent_conns", "100"))
+// By default, set the number of ABL sessions to be equal to the number of agent connections, unless explicitly specified otherwise.
+String numAblSessions = requireNumericPropValue("pasoe_num_abl_sessions", getSafePropValue("pasoe_num_abl_sessions", "${numAgentConns}"))
+// By default, set the number of initial sessions to be 10% of the number of connections, unless explicitly specified otherwise.
+String numInitialSessions = requireNumericPropValue("pasoe_num_initial_sessions",
+    getSafePropValue("pasoe_num_initial_sessions",
+        "${Math.round(numAgentConns.toInteger() * 0.2)}" // 20% of Connections per Agent (rounded to nearest whole number)
+    )
+)
+// Set the minimum available sessions to a more sane default for high-load scenarios, overriding the default of 1.
+String numMinAvailSessions = requireNumericPropValue("pasoe_min_avail_sessions", getSafePropValue("pasoe_min_avail_sessions", "2"))
+
+// Tomcat executor thread cound and JVM memory options to follow, which should be in agreement for capacity planning.
+String tomcatExecutorThreads = requireNumericPropValue("tomcat_executor_threads", getSafePropValue("tomcat_executor_threads", "900"))
+// By default, set the number of spare threads to be 10% of the number of executor threads, unless explicitly specified otherwise.
+String tomcatMinSpareThreads = requireNumericPropValue("tomcat_min_spare_threads",
+    getSafePropValue("tomcat_min_spare_threads",
+        "${Math.round(tomcatExecutorThreads.toInteger() * 0.1)}" // 10% of Tomcat Executor Threads (rounded to nearest whole number)
+    )
+)
+String tomcatMaxQueueSize = requireNumericPropValue("tomcat_max_queue_size", getSafePropValue("tomcat_max_queue_size", "100"))
+String tomcatUriEncoding = getSafePropValue("tomcat_uri_encoding", "UTF-8")
+String tomcatJvmXmxMb = requireNumericPropValue("tomcat_jvm_xmx_mb", getSafePropValue("tomcat_jvm_xmx_mb", "2048"))
+// By default, set Xms equal to Xmx to avoid heap-resize pauses under load, unless explicitly specified otherwise.
+String tomcatJvmXmsMb = requireNumericPropValue("tomcat_jvm_xms_mb",
+    getSafePropValue("tomcat_jvm_xms_mb",
+        "${tomcatJvmXmxMb}" // Default: equal to tomcat_jvm_xmx_mb
+    )
+)
+// By default, set the young generation size to ~20% of Xmx, unless explicitly specified otherwise.
+String tomcatJvmNewSizeMb = requireNumericPropValue("tomcat_jvm_new_size_mb",
+    getSafePropValue("tomcat_jvm_new_size_mb",
+        "${Math.round(tomcatJvmXmxMb.toInteger() * 0.2)}" // ~20% of tomcat_jvm_xmx_mb (rounded to nearest whole number)
+    )
+)
+
+// Parameters for the database connections.
+String configuredDbHost = getSafePropValue("db_host", "")
+String configuredDbPort = getSafePropValue("db_port", "")
+String configuredDbPortMin = getSafePropValue("db_port_min", "")
+String configuredDbPortMax = getSafePropValue("db_port_max", "")
+String configuredDbLockWait = getSafePropValue("db_lockwait", "10") // Default (minimum) is 10 seconds
+
+if (useDatabase) {
+    configuredDbHost = requirePropValue("db_host", configuredDbHost, "when db_name enables database usage")
+    configuredDbPort = requireNumericPropValue("db_port", configuredDbPort, "when db_name enables database usage")
+    configuredDbPortMin = requireNumericPropValue("db_port_min", configuredDbPortMin, "when db_name enables database usage")
+    configuredDbPortMax = requireNumericPropValue("db_port_max", configuredDbPortMax, "when db_name enables database usage")
+    configuredDbLockWait = requireNumericPropValue("db_lockwait", configuredDbLockWait, "when db_name enables database usage")
+}
+
+// Common names/paths for building this project
+String projectName = project.name
+String projectDir = project.projectDir.absolutePath
+String mainResourcePath = "src/main/resources"
+String testResourcePath = "src/test/resources"
+String ablSourcePath = "src/main/abl"
+String schemaPath = "$mainResourcePath/schema"
+String testSourcePath = "src/test/abl"
+String webSourcePath = "src/main/webui"
+
+// Common directories for compilation/testing/debugging
+File buildSourceDir = file("$buildDir/src")
+File databaseDir = file("$buildDir/db")
+File distributionDir = file("$buildDir/dist")
+File listingOutDir = file("$buildDir/debugList")
+File installerDir = file("$buildDir/installer")
+File preprocessOutDir = file("$buildDir/preprocess")
+File resourcesDir = file("$buildDir/resources")
+File schemaOutDir = file("$buildDir/schema")
+File testsDir = file("$buildDir/tests")
+File xrefOutDir = file("$buildDir/xref")
+
+// Common directories for bundling of PASOE components
+File pasoeSourceDir = file("$mainResourcePath/pasoe")
+File oearPrimaryAblAppDir = file("$pasoeSourceDir/${oearPrimaryAblAppName}")
+File oearPrimaryWebAppDir = file("$oearPrimaryAblAppDir/webapps")
+File oearMonitorAblAppDir = file("$pasoeSourceDir/${oearMonitorAblAppName}")
+File oearMonitorWebAppDir = file("$oearMonitorAblAppDir/webapps")
+File pasoeBuildDir = file("$buildDir/pasoe")
+File oearPrimaryAblAppBuildDir = file("$pasoeBuildDir/${oearPrimaryAblAppName}")
+File oearMonitorAblAppBuildDir = file("$pasoeBuildDir/${oearMonitorAblAppName}")
+
+// We need to make the DLC dir, to get the build to continue.
+// Order of precedence is from https://docs.progress.com/bundle/openedge-devops-framework/page/ABLExtension.html
+String dlcHome = project.findProperty("DLC") ?: System.getenv("DLC") ?: null
+if (dlcHome == null ) {throw new GradleException("Unable to find DLC")}
+
+// A relative path for DLC means in this project folder
+File dlcLoc = file(dlcHome)
+String dlcRel = project.getRootProject().getRootDir().relativePath(dlcLoc)
+// if the DLC location is starts with "../" then it is not in the project folder
+boolean dlcInProject = !dlcRel.startsWith("..")
+
+// The extractOpenEdge task will populate it
+// this is a no-op/no-error if the folder already exists
+dlcLoc.mkdirs()
+
+// Used for external commands that are explicitly called
+ext.batExt = ["nt", "nt64"].contains(dlcType) ? ".bat" : ""
+ext.exeExt = ["nt", "nt64"].contains(dlcType) ? ".exe" : ""
+
+// Used for external dependencies which differ by OS used
+ext.zipExt = ["nt", "nt64"].contains(dlcType) ? "zip" : "tar.gz"
+
+// Obtain the version number to be used for this build of the application or default to null to cause the build to halt.
+String apiVersion = System.getenv("app_api_version") ?: project.findProperty("app_api_version") ?: null
+
+// Throw an error if an API version for this build cannot be determined.
+if (apiVersion == null) {
+    throw new GradleException("Neither 'app_api_version' environment variable nor 'app_api_version' property is set.")
+}
+
+// Throw an error if a version for the API is not what is expected.
+logger.quiet("Using API Version: $apiVersion")
+requireVersionFormat("API version", apiVersion)
+
+abl {
+    rcodeDir = file("$buildDir/rcode")
+    avmOptions {
+        tmpDir      = avmTempDir.path
+        tty.enabled = (packageType == "tty")
+    }
+    compileOptions {
+        // Must enable BOTH xref AND xrefXml
+        xref.enabled = true
+        xrefXml.enabled = true
+        listing.enabled = true
+        debugList.enabled = true
+        strictOptions {
+            // https://docs.progress.com/bundle/openedge-startup-and-parameter-reference/page/Compiler-Options-File-compileroptionsfile.html
+            // https://progresssoftware.atlassian.net/browse/OCTA-45620 means a no-op for ERROR
+            requireFullNames       = (ablCompOpts.contains("req-full-names") ? "error" : "ignore")
+            requireReturnValues    = (ablCompOpts.contains("req-ret-val") ? "error" : "ignore")
+            requireFieldQualifiers = (ablCompOpts.contains("req-fld-qual") ? "error" : "ignore")
+            requireFullKeywords    = (ablCompOpts.contains("req-full-kw") ? "error" : "ignore")
+        }
+    }
+}
+
+// Dependency repo setup
+repositories {
+    // Standard OpenEdge dependencies
+    ivy {
+        url = "${artifactoryBaseUrl}/oe-maven-${maven_build_type}"
+        allowInsecureProtocol = true
+        metadataSources {
+            artifact()
+        }
+        patternLayout {
+            artifact "[organisation]/[module]/[revision]/[artifact]-[revision](-[classifier]).[ext]"
+        }
+    }
+}
+
+// Configuration collection so we can act on the collection
+configurations {
+    dlc
+    perl
+    ade
+    OpenEdgeLicense
+    test
+    compile
+    OEAntJar
+    dockerSupport
+}
+
+// Divide dependencies into their respective collection
+dependencies {
+    // This is the OpenEdge installation
+    dlc("com/progress/openedge:oe:${oe_build_version}:${dlcType}@zip") { changing = true }
+    dlc("com/progress/openedge:db:${oe_build_version}:${dlcType}@zip") { changing = true }
+
+    // Dependencies needed for PCT/OEDF (note: naming uses a dash within the classifier for adecomm)
+    ade("com/progress/openedge:adecomm:${oe_build_version}:${dlcType}-${packageType}@pl") { changing = true }
+    ade("com/progress/openedge:dataadmin:${oe_build_version}:${dlcType}-${packageType}@pl") { changing = true }
+    ade("com/progress/openedge:prodict:${oe_build_version}:${dlcType}-${packageType}@pl") { changing = true }
+
+    // Dependencies needed for DLC/bin/prosign which is called after the build/test processes.
+    perl("com/progress/openedge:perl:${perlVersion}:${dlcType}@${zipExt}")
+
+    // OpenEdge license file (progress.cfg)
+    OpenEdgeLicense("com/progress/openedge:alltest:${oe_build_version}:${dlcType}@cfg") { changing = true }
+
+    // Dependencies needed to compile/build the code
+    compile("com/progress/openedge/abltools:corelib:${oe_build_version}:sources@pl") { changing = true }
+    compile("com/progress/openedge/abltools:netlib:${oe_build_version}:sources@pl") { changing = true }
+    compile("com/progress/openedge/abltools:serveradmin:${oe_build_version}:sources@pl") { changing = true }
+
+    // Dependencies needed to run the tests
+    test("com/progress/openedge/abltools:corelib:${oe_build_version}:${dlcType}_${packageType}@apl") { changing = true }
+    test("com/progress/openedge/abltools:ablunit:${oe_build_version}:${dlcType}_${packageType}@apl") { changing = true }
+    test("com/progress/openedge/abltools:netlib:${oe_build_version}:${dlcType}_${packageType}@apl") { changing = true }
+    test("com/progress/openedge/abltools:serveradmin:${oe_build_version}:${dlcType}_${packageType}@apl") { changing = true }
+
+    // Dependency for building distributable components (Jar file)
+    OEAntJar("com/progress/openedge:oeant:${oe_build_version}@jar") { changing = true }
+
+    // OELS-specific artifacts for Docker containerization (deployment support files around the Docker image)
+    // Expected: com/progress/openedge/oels/<api_version>/oels-<api_version>-docker-support.zip
+    dockerSupport("com/progress/openedge:oels:${apiVersion}:docker-support@zip") { changing = true }
+}
+
+task echoCurrentBranch {
+    doLast {
+        String branch = 'git rev-parse --abbrev-ref HEAD'.execute().text.trim()
+        println "Current Branch: $branch"
+    }
+}
+
+// Cleanliness task to check for mixed tabs and spaces in files
+task checkMixedWhitespace {
+    // List of directories to scan
+    List<String> directoriesToCheck = [ablSourcePath, testSourcePath, mainResourcePath, testResourcePath]
+    // List of file types to check
+    List<String> fileTypes = [".cls", ".p", ".pf", ".json", ".bat", ".ps1", ".sh", ".pl", ".md", ".config", ".xml", ".properties", ".gradle"]
+    // List of files to skip (by name or path pattern)
+    List<String> filesToSkip = ["mcp.json","loadschema.p","createdomain.p"]
+
+    doLast {
+        // Map to store files and their respective lines with mixed tabs and spaces
+        def mixedLines = [:]
+
+        // Iterate over each directory
+        directoriesToCheck.each { dirPath ->
+            def directory = file(dirPath)
+            // Recursively iterate over each file in the directory
+            directory.eachFileRecurse { file ->
+                // Check if the file should be skipped
+                def shouldSkip = filesToSkip.any { skipPattern ->
+                    file.name == skipPattern || file.path.contains(skipPattern)
+                }
+
+                // Check if the file matches any of the specified file types and should not be skipped
+                if (!shouldSkip && fileTypes.any { file.name.endsWith(it) }) {
+                    // Iterate over each line in the file
+                    file.eachLine { line, lineNumber ->
+                        // Check if the line contains both tabs and spaces
+                        if (line.contains('\t') && line.contains(' ')) {
+                            // Add the line number to the map for the current file
+                            if (!mixedLines.containsKey(file)) {
+                                mixedLines[file] = []
+                            }
+                            mixedLines[file] << lineNumber
+                        }
+                    }
+                }
+            }
+        }
+
+        // If any mixed lines are found, print the details and throw an exception
+        if (mixedLines) {
+            mixedLines.each { file, lines ->
+                println "Found mixed tabs and spaces in ${file.path} on lines: ${lines.join(', ')}"
+            }
+            throw new GradleException("Mixed tabs and spaces found in files.")
+        } else {
+            println "No mixed tabs and spaces found."
+        }
+    }
+}
+
+// Extract the zipfiles into our local DLC
+task extractOpenEdge(type: Copy) {
+    outputs.dir(abl.dlcHome)
+
+    from { configurations.dlc.collect { zipTree(it) } }
+    into abl.dlcHome
+    dirPermissions {
+        unix("rwxrwxr-x")
+    }
+    filePermissions {
+        unix("rwxrwxr-x")
+    }
+
+    // Exclude unnecessary items to make extraction run faster
+    exclude "ant/**/*"
+    exclude "auditing/**/*"
+    exclude "bin/*dbutils/**/*"
+    exclude "bin/infragistics/**/*"
+    exclude "bin/netlibs/**/*"
+    exclude "bin/netsetup/**/*"
+    exclude "bin/telerik/**/*"
+    exclude "gradle/**/*"
+    exclude "include/**/*"
+    exclude "ishield/**/*"
+    exclude "newsport*"
+    exclude "odbc/**/*"
+    exclude "proedit/**/*"
+    exclude "src/prodoc/**"
+    exclude "src/samples/**"
+    exclude "testcerts/**/*"
+    exclude "ubqmanager/**/*"
+    exclude "wcadd/**/*"
+    exclude "**/*.c"
+    exclude "**/*.rtf"
+
+    includeEmptyDirs = false
+
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+// Only unzip if DLC is in the project
+extractOpenEdge.onlyIf { (dlcInProject) }
+
+task extractLicense(type: Copy){
+    outputs.file("${abl.dlcHome}/progress.cfg")
+
+    from { configurations.OpenEdgeLicense.collect {it} }
+    into abl.dlcHome
+    rename("alltest-${oe_build_version}-${dlcType}.cfg", "progress.cfg")
+    dirPermissions {
+        unix("rwxrwxr-x")
+    }
+    filePermissions {
+        unix("rwxrwxr-x")
+    }
+}
+// Only unzip if DLC is in the project
+extractLicense.onlyIf { (dlcInProject) }
+
+// extract the zipfiles into our local DLC
+task extractPerl(type: Copy) {
+    outputs.dir("${abl.dlcHome}/perl")
+
+    if (['nt', 'nt64'].contains(dlcType)) {
+        // Windows will package Perl as a zip file
+        from { configurations.perl.collect { zipTree(it) } }
+    } else {
+        // Linux will package Perl as a tar.gz file
+        from { configurations.perl.collect { tarTree(resources.gzip(it)) } }
+    }
+    into "${abl.dlcHome}/perl"
+    dirPermissions {
+        unix("rwxrwxr-x")
+    }
+    filePermissions {
+        unix("rwxrwxr-x")
+    }
+
+    includeEmptyDirs = false
+
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+// Only unzip if DLC is in the project
+extractPerl.onlyIf { (dlcInProject) }
+
+// Rcode "ADE" dependencies, like adecomm, prodict and dataadmin
+task extractAde(type: Copy) {
+    mustRunAfter extractOpenEdge
+
+    doNotTrackState("Always copy ADE rcode")
+
+    from { configurations.ade.files }
+    into "${abl.dlcHome}/${packageType}"
+    rename(/^(adecomm|dataadmin|prodict)-.*\.pl$/, '$1.pl')
+}
+// Only unzip if DLC is in the project
+extractAde.onlyIf { (dlcInProject) }
+
+task extractSources() {
+    outputs.dir(ablLibs)
+
+    doNotTrackState("Always extract sources")
+
+    // this is needed to force this task to have outputs
+    doFirst {
+        // dependencies have a name, which we want to use
+        configurations.compile.dependencies.each {
+            dep -> libSrcPaths << file("$ablLibs/${dep.name}")
+            // now get all of the files for that dependency, and extract
+            configurations.compile.resolvedConfiguration.resolvedArtifacts
+                .findAll { it.name == dep.name && it.moduleVersion.id.group == dep.group }
+                .each { artifact ->
+                    ant.copy (toDir : "$ablLibs/${dep.name}" ) {
+                        plfileset (src : artifact.file.path,
+                                   includes : "**/*")
+                    }
+                }
+        }
+    }
+}
+
+task ResolveOpenEdgeDependencies(){
+    dependsOn checkMixedWhitespace
+    dependsOn extractOpenEdge
+    dependsOn extractAde
+    dependsOn extractLicense
+    dependsOn extractPerl
+    dependsOn extractSources
+    dependsOn echoCurrentBranch
+
+    doFirst {
+        avmTempDir.mkdirs()
+        ablLibs.mkdirs()
+    }
+}
+
+task CreateManifest(type: ABLRun){
+    dependsOn ResolveOpenEdgeDependencies
+
+    File manifest = file("$buildDir/MANIFEST.OE")
+    outputs.file(manifest)
+
+    procedure = "bitness.p"
+    wrkDir    = "$buildDir"
+    propath   = files(mainResourcePath)
+    arguments = [
+        debugPCT: dbgProp,
+        noErrorOnQuit: true,
+        failOnError: false,
+        resultProperty: "bitness"
+    ]
+
+    doLast {
+        manifest.write( "Implementation-Vendor  : Progress Software Corporation\n")
+        manifest.append("Implementation-Version : ${oe_build_version}\n")
+        manifest.append("Package-Type           : \${packageType}\n") // Escaped to keep the ${} in the file, used for copy(expand) later.
+        manifest.append("Project-Name           : ${projectName}\n")
+        manifest.append("Build-Date             : " + OffsetDateTime.now(ZoneOffset.UTC).format("yyyy-MM-dd'T'HH:mm:ss.SSSX") + "\n")
+        manifest.append("Build-OS               : " + System.getProperty("os.name") + " " + System.getProperty("os.arch") + " " + System.getProperty("os.version") + "\n")
+        manifest.append("Build-JDK              : " + System.getProperty("java.version") + " " + System.getProperty("java.vendor") + " " + System.getProperty("java.vm.version") + "\n")
+        manifest.append("Build-Version          : ${versioning.info.full}\n")
+        manifest.append("DLC-Version            : ${abl.openedgeVersion}\n")
+        manifest.append("DLC-Bitness            : ${ant.bitness}\n")
+    }
+}
+
+task createPF(type: Copy) {
+    outputs.file("$resourcesDir/main/build.pf")
+    outputs.file("$resourcesDir/test/build.pf")
+    outputs.file("$resourcesDir/test/run.pf")
+    outputs.file("$resourcesDir/compileropts.pf")
+
+    // Ensure task reruns if compiler option property changes.
+    inputs.property("ablCompilerOpts", getSafePropValue("ablCompilerOpts"))
+
+    // in case there are any params passed in and also in the PF
+    String params = getSafePropValue("ablStartupParams", "# No Startup Params")
+    String compilerOptsPath = file("$resourcesDir/compileropts.pf").absolutePath
+    def configuredCompilerOpts = ablCompOpts.collect { it.trim() }.findAll { it }
+    String compilerParams = configuredCompilerOpts ? "-compileroptionsfile \"${compilerOptsPath}\"" : "# No Compiler Options"
+
+    // this "into"'s are relative to the main "into" below
+    from("$mainResourcePath") {
+        into "main"
+        include("*.pf")
+        expand(buildDir:          "$buildDir",
+               dlcHome:           "${file(abl.dlcHome).absolutePath}",
+               packageType:       "$packageType",
+               projectDir:        projectDir,
+               startupParams:     params,
+               compilerParams:    compilerParams)
+    }
+    from("$testResourcePath") {
+        into "test"
+        include("*.config")
+    }
+    from("$testResourcePath") {
+        into "test"
+        include("*.pf")
+        expand(buildDir:          "$buildDir",
+               dlcHome:           "${file(abl.dlcHome).absolutePath}",
+               packageType:       "$packageType",
+               projectDir:        projectDir,
+               startupParams:     params,
+               compilerParams:    compilerParams)
+    }
+    into "$resourcesDir"
+    dirPermissions {
+        unix("rwxrwxr-x")
+    }
+    filePermissions {
+        unix("rwxrwxr-x")
+    }
+
+    // The ABL compiler options file cannot share the same format as a startup .pf file,
+    // so it must be a separate file. We generate it here to keep createPF as the single
+    // task responsible for all compilation parameter files.
+    // Workaround for OEDF strictOptions being a no-op (OCTA-45620).
+    doLast {
+        File compilerOptsFile = file("$resourcesDir/compileropts.pf")
+        compilerOptsFile.parentFile.mkdirs()
+        def compilerOptionMap = [
+            "req-full-names": "require-full-names:error",
+            "req-ret-val":    "require-return-values:error",
+            "req-fld-qual":   "require-field-qualifiers:error",
+            "req-full-kw":    "require-full-keywords:error"
+        ]
+
+        // Normalize configured values and map any supported shorthand values.
+        def activeOpts = ablCompOpts
+            .collect { it.trim() }
+            .findAll { it }
+            .collect { compilerOptionMap[it] ?: it }
+
+        if (activeOpts) {
+            // Compiler options file expects comma-separated options.
+            compilerOptsFile.text = activeOpts.join(",\n") + "\n"
+            logger.quiet("Compiler options file: ${compilerOptsFile.absolutePath} -> ${activeOpts}")
+        } else {
+            compilerOptsFile.text = ""
+            logger.quiet("No compiler options configured; compiler options file left empty and unused.")
+        }
+    }
+}
+
+// Create the database necessary ONLY for the application compilation
+task CreateLocalDB(type: CreateDB){
+    dependsOn ResolveOpenEdgeDependencies
+
+    outputs.dir(databaseDir)
+    outputs.file("$databaseDir/${appDatabaseName}.db")
+
+    dbName     = appDatabaseName
+    blockSize  = 8
+    outputDir  = databaseDir
+    sourceDb   = "${abl.dlcHome}/empty8"
+    schemaFile = "$schemaPath/${appDatabaseName}.df"
+    structFile = "$schemaPath/${appDatabaseName}.st"
+
+    onlyIf { useDatabase }
+}
+
+// Connect to the locally-created database
+task ConnectLocalDB(type: DBConnection) {
+    dependsOn CreateLocalDB
+
+    id                   = appDatabaseName
+    dbName               = "$databaseDir/${appDatabaseName}.db"
+    aliases              = ["statsdb"]
+    connectionParameters = "-1"
+
+    onlyIf { useDatabase }
+}
+
+// This task compiles all the source code
+task compileCode(type: ABLCompile) {
+    dependsOn ResolveOpenEdgeDependencies
+    dependsOn createPF
+    if (useDatabase) {
+        dependsOn ConnectLocalDB
+    }
+
+    doNotTrackState("Always compile application code")
+
+    outputs.dir(abl.rcodeDir)
+
+    avmOptions {
+        parameterFile = file("$resourcesDir/main/build.pf").absolutePath
+    }
+    compileOptions {
+        // we use preprocessed files for doc
+        preprocess.enabled = true
+        preprocessDir = preprocessOutDir
+        debugListDir = listingOutDir
+    }
+
+    if (useDatabase) {
+        dbConnectionReferenceId(appDatabaseName)
+    }
+    wrkDir = abl.rcodeDir
+    source(ablSourcePath)
+    include("**/*.cls")
+    include("**/*.p")
+    propath = files(ablSourcePath, libSrcPaths)
+}
+
+// This task compiles any programs for schema loading
+task compileSchema(type: ABLCompile) {
+    dependsOn ResolveOpenEdgeDependencies
+    dependsOn createPF
+
+    doNotTrackState("Always compile schema loader code")
+
+    outputs.dir(schemaOutDir)
+
+    avmOptions {
+        parameterFile = file("$resourcesDir/main/build.pf").absolutePath
+    }
+    compileOptions {
+        preprocess.enabled = false
+    }
+
+    rcodeDir = "$schemaOutDir"
+    source("$schemaPath/encrypted")
+    include("*.p")
+    propath = files("$schemaPath/encrypted")
+}
+
+// This task creates the rcode procedure library along with the manifest file
+task packageRCode(type: PL){
+    dependsOn compileCode
+    dependsOn compileSchema
+    dependsOn CreateManifest
+
+    inputs.dir(abl.rcodeDir)
+    plFile = "$distributionDir/${classPackageName}.pl"
+    outputs.file(plFile)
+
+    codepage = "undefined"
+    from("${abl.rcodeDir}")
+
+    // Be specific that we want all r-code files from our compiled code location
+    include("OpenEdge/**",
+            "*.r",
+            "MANIFEST.OE")
+
+    doFirst {
+        // Create the MANIFEST for the PL using expanded properties
+        copy {
+            from "$buildDir/MANIFEST.OE"
+            into abl.rcodeDir
+            expand(packageType: packageType)
+        }
+    }
+}
+
+// Create an APL file (as of OpenEdge 12.7)
+task packageProtectedCode(type: APL) {
+    dependsOn compileCode
+
+    inputs.dir(abl.rcodeDir)
+    from("${abl.rcodeDir}")
+    archiveBaseName = "${classPackageName}"
+    destinationDirectory = distributionDir
+    outputs.file(archiveFile)
+
+    doFirst {
+        // Delete any existing manifest file as this task will create its own.
+        delete "${abl.rcodeDir}/MANIFEST.OE"
+    }
+
+    manifest {
+        attributes.put AttributeKeys.ImplementationTitle, "Test Suite"
+        attributes.put AttributeKeys.ImplementationVendor, "Progress Software Corporation"
+        attributes.put AttributeKeys.ImplementationVersion, "${oe_build_version}"
+        attributes.put AttributeKeys.ComponentName, "${classPackageName}"
+        // The Signature-Policy defines whether all libraries in the session should be signed or not.
+        // Values: "open" says not all have to be signed while "required" says all have to be signed.
+        attributes.put AttributeKeys.SignaturePolicy, SignaturePolicy.OPEN
+        // The Validation-Policy defines what the AVM should do if the validation of a signed APL file fails.
+        // Values: "none" (do nothing), "warn" (just warn about it), or "fail" (raise an error).
+        attributes.put AttributeKeys.ValidationPolicy, ValidationPolicy.WARN
+    }
+}
+
+// Package the application code as a zip file
+task packageAblApp(type: Zip) {
+    inputs.dir(abl.rcodeDir)
+
+    // archiveFile is the destDir + archive name. See https://docs.gradle.org/current/dsl/org.gradle.api.tasks.bundling.Zip.html
+    outputs.file(archiveFile)
+
+    destinationDirectory = distributionDir
+
+    archiveBaseName   = "${classPackageName}"
+    archiveExtension  = "zip"
+
+    from(abl.rcodeDir)
+}
+
+// Wrapper task to create rcode pl/apl archives
+task packageCode(){
+    dependsOn CreateManifest
+    dependsOn compileCode
+    dependsOn packageRCode
+    dependsOn packageAblApp
+    dependsOn packageProtectedCode
+
+    // The compile* tasks will create all needed r-code,
+    // so we must to make sure that action happens first
+    packageRCode.mustRunAfter compileCode
+
+    // Create an archive explicitly for PASOE deployment
+    packageAblApp.mustRunAfter packageRCode
+
+    // For OE 12.7 we must package a new .apl archive
+    packageProtectedCode.mustRunAfter packageRCode
+}
+
+// This task compiles the TEST code to verify there are no compiler errors
+task compileTest(type: ABLCompile) {
+    dependsOn ResolveOpenEdgeDependencies
+    dependsOn createPF
+    if (useDatabase) {
+        dependsOn ConnectLocalDB
+    }
+    dependsOn packageCode  // Package application (creates APL, PL, and ZIP)
+
+    doNotTrackState("Always compile test code")
+
+    outputs.dir(testsDir)
+
+    avmOptions {
+        parameterFile = file("$resourcesDir/test/build.pf").absolutePath
+    }
+
+    // We must place XREF files in the same directory as any R-code for tests
+    compileOptions {
+        xrefDir = testsDir
+        debugListDir = listingOutDir
+    }
+
+    if (useDatabase) {
+        dbConnectionReferenceId(appDatabaseName)
+    }
+    rcodeDir = "$testsDir"
+    source(testSourcePath)
+    include("**/*.cls")
+    include("**/*.p")
+    propath = files(testSourcePath,                         // test sources to compile
+                    "$distributionDir/${classPackageName}.apl", // packaged application APL
+                    ablSourcePath,                          // application source (for includes)
+                    configurations.test)                    // corelib/netlib/ablunit r-code
+}
+
+// This task executes the tests against the built Procedure Library.
+// We call ABLUnitCore.p manually since we want to build the JSON config ourselves.
+task ablTest(type: ABLRun) {
+    // Force task to always be skipped.
+    onlyIf { false }
+
+    dependsOn compileTest
+    if (useDatabase) {
+        dependsOn ConnectLocalDB
+    }
+
+    inputs.dir(testsDir)
+    outputs.file("$testsDir/results.xml")
+
+    File jsonConfig = file("$testsDir/ablunit.json")
+
+    // This fails in "configuration" because the various folders aren't yet created
+    doFirst {
+        File profTemp = file("$buildDir/temp/profiler")
+        profTemp.mkdirs()
+
+        File logsDir = file("$testsDir/logs")
+        logsDir.mkdirs()
+
+        // Creates the JSON file with test programs to run, skipping anything which is un-runnable via command line
+        writeTestJsonConfig([ outputLocation : testsDir,
+                              xrefLocation   : testsDir,
+                              xrefExt        : "xref"
+                            ],
+                            fileTree(testsDir).matching{
+                                include("${ablTestFilter}")
+                                exclude(ablTestExclusions)
+                            },
+                            jsonConfig)
+    }
+
+    // Note: Statistics should NEVER be enabled for normal usage; reserved only for OE engineering purposes.
+    profiler {
+        enabled     = true
+        coverage    = true
+        statistics  = false
+        outputFile  = "$testsDir/TestPerformance.prof"
+        description = "ABLUnit test coverage for ${projectName}-${oe_build_version}-${dlcType}_${packageType}"
+    }
+
+    arguments = [
+        debugPCT: dbgProp,
+        noErrorOnQuit: true
+    ]
+    avmOptions {
+        parameterFile = file("$resourcesDir/test/run.pf").absolutePath
+    }
+
+    if (useDatabase) {
+        dbConnectionReferenceId(appDatabaseName)
+    }
+    wrkDir     = testsDir
+    procedure  = "ABLUnitCore.p"
+
+    propath = files("$testsDir",                           // unit test rcode
+                    "$distributionDir/${classPackageName}.apl", // project rcode being tested
+                    testSourcePath,                        // for other non-code artifacts needed by the tests
+                    testResourcePath,                      // pick up runtime config files like logging.config
+                    configurations.test)                   // other dependencies
+
+    doLast {
+        if (!file("$testsDir/results.xml").exists()) {
+            throw new GradleException("ABLUnit results file $testsDir/results.xml not found")
+        }
+        File resultsFile = file("$testsDir/results.xml")
+        def document = javax.xml.parsers.DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(resultsFile)
+        def results = document.documentElement
+        String relPath = file(projectDir).relativePath(file("$testsDir/results.xml"))
+        logger.quiet("$relPath: tests=${results.getAttribute('tests')}; errors=${results.getAttribute('errors')}; failures=${results.getAttribute('failures')}; skipped=${results.getAttribute('skipped')}")
+
+        def renameMap = [
+            "oemp": "TestMemory.oemp",
+            "prof": "TestPerformance.prof"
+        ]
+
+        renameMap.each { ext, newName ->
+            def matchingFile = testsDir.listFiles().find { it.name ==~ /.*\.${ext}$/ }
+
+            if (matchingFile) {
+                copy {
+                    from matchingFile
+                    into distributionDir
+                    rename { _ -> newName }
+                }
+                println "Copied ${testsDir}/${matchingFile.name} to ${distributionDir}/${newName}"
+            } else {
+                println "No .${ext} file found in $testsDir"
+            }
+        }
+    }
+}
+
+// This task creates the source pl file
+task packageDebugListings(type: Zip) {
+    dependsOn compileCode
+    dependsOn compileTest
+    dependsOn CreateManifest
+
+    inputs.dir(preprocessOutDir)
+
+    // archiveFile is the destDir + archive name. See https://docs.gradle.org/current/dsl/org.gradle.api.tasks.bundling.Zip.html
+    outputs.file(archiveFile)
+
+    destinationDirectory = distributionDir
+
+    archiveBaseName   = "${classPackageName}"
+    archiveClassifier = "listings"
+    archiveExtension  = "zip"
+
+    from(listingOutDir)
+
+    doFirst {
+        // Create the MANIFEST for the PL using expanded properties
+        copy {
+            from file("$buildDir/MANIFEST.OE")
+            into listingOutDir
+            expand(packageType: "debug-listings")
+        }
+    }
+}
+
+task packagePreprocessedSource(type: Zip) {
+    dependsOn compileCode
+    dependsOn compileSchema
+    dependsOn CreateManifest
+
+    inputs.dir(preprocessOutDir)
+    // archiveFile is the destDir + archive name. See https://docs.gradle.org/current/dsl/org.gradle.api.tasks.bundling.Zip.html
+    outputs.file(archiveFile)
+
+    destinationDirectory = distributionDir
+
+    archiveBaseName   = "${classPackageName}"
+    archiveClassifier = "preprocess"
+    archiveExtension  = "zip"
+
+    from(preprocessOutDir)
+
+    doFirst {
+        copy {
+            from  file("$buildDir/MANIFEST.OE")
+            into preprocessOutDir
+            expand(packageType: "preprocessed-sources")
+        }
+    }
+}
+
+// Creates a JSON config file for ABLUnit
+def writeTestJsonConfig(Map opts, FileTree testFiles, File cfgFile) {
+    if (opts == null) {opts = [:]}
+
+    def generator = new JsonGenerator.Options()
+        .excludeNulls()
+        .addConverter(File)     { it.path }
+        .addConverter(FileTree) { FileTree ft, String key ->
+            ArrayList tests = new ArrayList()
+            if (key == "tests") {
+                ft.getFiles().each {
+                    tests.add([test: it])
+                }
+            }
+            tests
+        }
+        .build()
+
+    JsonBuilder builder = new JsonBuilder(generator)
+    builder{
+        options {
+                output {
+                    location (opts.containsKey("outputLocation") ? opts.get("outputLocation") : testsDir)
+                    fileName "results"
+                    format   "xml"
+                }
+                throwError       (opts.containsKey("throwError") ? opts.get("throwError") : true)
+                showErrorMessage (opts.containsKey("showErrorMessage") ? opts.get("showErrorMessage") : false)
+                writeLog         opts.get("writeLog")
+                quitOnEnd        opts.get("quitOnEnd")
+                xref {
+                    useXref         true            // always use the prebuilt xrefs
+                    xrefLocation    opts.get("xrefLocation")
+                    xrefExtension   opts.get("xrefExt")
+                    xrefThrowError  opts.get("xrefThrowError")
+                }
+        }
+        tests  testFiles
+    }
+
+    cfgFile.text = builder.toString()
+}
+
+// Looks for a string in a text file, returns true when found
+Boolean grepInFile(String fileName, String testString){
+    String[] lines = file(fileName) as String[]
+
+    for (line in lines) {
+        if (line ==~ testString) {
+            return true
+        }
+    }
+
+    return false
+}
+
+// Verifies that the archives generated have the correct manifest, and that the PLs are using the UNDEFINED codepage
+// We test for:
+// - existence (implicitly) of soure and rcode PL
+// - that the PLs are build with the UNDEFINED codepage
+// - that the PLs contain a tailored MANIFEST.OE file
+// - that the APLs contain a tailored WEB-INF/MANIFEST.MF file
+// - that each manifest's Implementation-Version, Package-Type and Project-Name are correct
+task checkDist(){
+    dependsOn packagePreprocessedSource
+    dependsOn packageRCode
+    dependsOn packageProtectedCode
+
+    inputs.files packagePreprocessedSource
+    inputs.files packageRCode
+    inputs.files packageProtectedCode
+
+    // States that task must always be run regardless of whether Gradle wants to or not
+    doNotTrackState("Sanity check does not have outputs, always run")
+
+    // Use slashy-strings for Regexes (for simplicity)
+    // http://docs.groovy-lang.org/docs/latest/html/documentation/#_slashy_string
+
+    // Expected text for validations.
+    String codepageRegex    = /.*Library code page is undefined.*/
+    String implVersionRegex = /^Implementation-Version\s*: ${oe_build_version}$/
+    String projNameRegex    = /^Project-Name\s*: ${projectName}$/
+    // Package-Type regex varies by archive
+
+    doFirst {
+        // Get the absolute path of the prolib executable
+        String absDLC = file(abl.dlcHome).absolutePath
+        String prolibExe = "${absDLC}/bin/prolib$exeExt"
+        String propackBat = "${absDLC}/bin/propack$batExt"
+        File libExtract = file("$buildDir/extract")
+
+        // Create directories for extraction of APL contents.
+        libExtract.mkdirs()
+
+        // Get the manifest from the APL, test for expected strings
+        copy {
+            from zipTree(packageProtectedCode.archiveFile)
+            into "$libExtract"
+        }
+        if (!file("$libExtract/META-INF/MANIFEST.MF").exists()) {
+            throw new GradleException("Protected manifest not found")
+        }
+        if (grepInFile("$libExtract/META-INF/MANIFEST.MF", implVersionRegex) == false) {
+            throw new GradleException("Protected manifest does not contain the expected Implementation-Version")
+        }
+        if (grepInFile("$libExtract/META-INF/MANIFEST.MF", /^Package-Type\s*: apl$/) == false) {
+            throw new GradleException("Protected manifest does not contain the expected Package-Type")
+        }
+        // Validate OpenEdge-Version has 4 segments
+        if (grepInFile("$libExtract/META-INF/MANIFEST.MF", /^OpenEdge-Version\s*:\s*\s*$/) == true) {
+            throw new GradleException("Protected manifest OpenEdge-Version is empty or missing")
+        }
+        if (grepInFile("$libExtract/META-INF/MANIFEST.MF", /^OpenEdge-Version\s*:\s*\d+\.\d+\.\d+\.\d+\s*$/) == false) {
+            throw new GradleException("Protected manifest OpenEdge-Version must have 4 numeric segments")
+        }
+        logger.quiet("Passed protected MANIFEST sanity check")
+
+        // Get the manifest from the PL, test for expected strings
+        ant.exec(executable: prolibExe,
+                 output: "$buildDir/prolib_rcode.log",
+                 dir: "$libExtract") {
+            ant.env(key: "DLC", value: absDLC)
+            ant.arg(line: "${packageRCode.plFile} -nowarn -yank MANIFEST.OE")
+        }
+        if (!file("$libExtract/MANIFEST.OE").exists()) {
+            throw new GradleException("R-code manifest not found")
+        }
+        if (grepInFile("$libExtract/MANIFEST.OE", implVersionRegex) == false) {
+            throw new GradleException("R-code manifest does not contain the expected Implementation-Version")
+        }
+        if (grepInFile("$libExtract/MANIFEST.OE", /^Package-Type\s*: ${packageType}$/) == false) {
+            throw new GradleException("R-code manifest does not contain the expected Package-Type")
+        }
+        if (grepInFile("$libExtract/MANIFEST.OE", projNameRegex) == false) {
+            throw new GradleException("R-code manifest does not contain the expected Project-Name")
+        }
+        // Validate DLC-Version has 4 segments
+        if (grepInFile("$libExtract/MANIFEST.OE", /^DLC-Version\s*:\s*\s*$/) == true) {
+            throw new GradleException("R-code manifest DLC-Version is empty or missing")
+        }
+        if (grepInFile("$libExtract/MANIFEST.OE", /^DLC-Version\s*:\s*\d+\.\d+\.\d+\.\d+\s*$/) == false) {
+            throw new GradleException("R-code manifest DLC-Version must have 4 numeric segments")
+        }
+        logger.quiet("Passed r-code MANIFEST sanity check")
+        delete "$libExtract/MANIFEST.OE"
+
+        // PREPROCESS ZIP
+        copy {
+            from zipTree(packagePreprocessedSource.archiveFile)
+            include "MANIFEST.OE"
+            includeEmptyDirs = false
+            into "$libExtract"
+        }
+        if (!file("$libExtract/MANIFEST.OE").exists()) {
+            throw new GradleException("Preprocessed code manifest not found")
+        }
+        if (grepInFile("$libExtract/MANIFEST.OE", implVersionRegex) == false) {
+            throw new GradleException("Preprocessed code manifest does not contain the expected Implementation-Version")
+        }
+        if (grepInFile("$libExtract/MANIFEST.OE", /^Package-Type\s*: preprocessed-sources$/) == false) {
+            throw new GradleException("Preprocessed code manifest does not contain the expected Package-Type")
+        }
+        if (grepInFile("$libExtract/MANIFEST.OE", projNameRegex) == false) {
+            throw new GradleException("Preprocessed code manifest does not contain the expected Project-Name")
+        }
+
+        String buildRel = file(projectDir).relativePath(distributionDir)
+        logger.quiet("Validation of $buildRel artifacts succeeded")
+        delete "$libExtract/MANIFEST.OE"
+    }
+}
+
+// Cleans the "ABL output" of the build script. Keeps the dependencies in build/DLC and build/lib
+// Intended for developer use, to allow clean builds without having to extract the DLC and PL dependencies each time
+task cleanBuildOutput(type: Delete) {
+    // States that task must always be run regardless of whether Gradle wants to or not
+    doNotTrackState("Clean operation does not have outputs, always run")
+
+    delete "$buildDir/MANIFEST.OE",
+           "$buildDir/rcode",
+           ablLibs,
+           buildSourceDir,
+           databaseDir,
+           distributionDir,
+           installerDir,
+           listingOutDir,
+           preprocessOutDir,
+           resourcesDir,
+           testsDir,
+           xrefOutDir,
+           // clean the contents of the temp dir, but not the folder itself
+           fileTree("$buildDir/temp") {include "**/*"},
+           // profiler output from ABL task execution (PCT/OEDF side-effect)
+           "$buildDir/profiler",
+           // Gradle test/check reports
+           "$buildDir/reports",
+           // any logs and OUT files in the build root too
+           fileTree("$buildDir") {include "*.log", "*.out" }
+}
+
+// Clean up the build directory for the UI
+task cleanUIOutput(type: Delete) {
+    doNotTrackState("Always clean UI output when requested")
+
+    delete "${webSourcePath}/build"
+    delete "${webSourcePath}/dist"
+    delete "${webSourcePath}/html"
+    delete "${webSourcePath}/coverage"
+}
+
+// Create a schema.zip file of all schema and database load scripts
+task packageSchema(type: Zip) {
+    // archiveFile is the destDir + archive name. See https://docs.gradle.org/current/dsl/org.gradle.api.tasks.bundling.Zip.html
+    outputs.file(archiveFile)
+
+    destinationDirectory = distributionDir
+
+    archiveBaseName   = "schema"
+    archiveExtension  = "zip"
+
+    from("${schemaPath}") {
+        include(["*.df", "*.st"])
+    }
+}
+
+task addTestExclusions {
+    doLast {
+        println "Updated ABLUnit Test Exclusions: $ablTestExclusions"
+    }
+}
+
+// Recompiles and packages ABL-related code only, skipping the UI build and packaging
+task recompile() {
+    dependsOn cleanBuildOutput, packageCode, addTestExclusions, ablTest, packageSchema
+
+    packageCode.mustRunAfter cleanBuildOutput
+    addTestExclusions.mustRunAfter packageCode
+    ablTest.mustRunAfter addTestExclusions
+    packageSchema.mustRunAfter packageCode
+}
+
+// Quick recompile focused on building and packaging only (fully skip testing)
+task quickpile() {
+    dependsOn cleanBuildOutput, packageCode, packageSchema
+
+    packageCode.mustRunAfter cleanBuildOutput
+    packageSchema.mustRunAfter packageCode
+}
+
+// Further updates the OEAR for the default ABL Application
+task tailorContents(type: Copy) {
+    dependsOn packageProtectedCode
+
+    inputs.dir(pasoeSourceDir)
+    inputs.dir(oearPrimaryWebAppDir)
+    inputs.dir(oearMonitorWebAppDir)
+    inputs.property("oearPrimaryWebAppName", oearPrimaryWebAppName)
+    inputs.property("oearMonitorWebAppName", oearMonitorWebAppName)
+    outputs.dir(pasoeBuildDir)
+
+    File tempDir = pasoeBuildDir
+    into(tempDir)
+
+    doFirst {
+        File primaryArchive = file("${oearPrimaryWebAppDir}/${oearPrimaryWebAppName}.zip")
+        if (!primaryArchive.exists()) {
+            throw new GradleException("Primary webapp archive not found: ${primaryArchive.path}")
+        }
+        File monitorArchive = file("${oearMonitorWebAppDir}/${oearMonitorWebAppName}.zip")
+        if (!monitorArchive.exists()) {
+            throw new GradleException("Monitor webapp archive not found: ${monitorArchive.path}")
+        }
+    }
+
+    // Copy all PASOE resources with a few exceptions by file extension.
+    from(pasoeSourceDir) {
+        exclude(["**/*.config", "**/*.json", "**/*.map", "**/*.properties"])
+    }
+
+    // Copy all application configuration and PASOE tailoring files while replacing custom @TOKEN@ values.
+    // Note: This sets the limits for PASOE operation within the deployed ABL Application via the OEAR file.
+    from(pasoeSourceDir) {
+        include(["**/*.config", "**/*.json", "**/*.map", "**/*.properties"])
+        filter { line ->
+            line
+                .replace("@CLASSPACKAGE@", classPackageName)
+                .replace("@CLASSPATH@", classPathPackage)
+                .replace("@INSTANCE@", pasoeInstanceName)
+                .replace("@PRIMARY_ABLAPP@", oearPrimaryAblAppName)
+                .replace("@PRIMARY_WEBAPP@", oearPrimaryWebAppName)
+                .replace("@MONITOR_ABLAPP@", oearMonitorAblAppName)
+                .replace("@MONITOR_WEBAPP@", oearMonitorWebAppName)
+                .replace("@APIVERSION@", apiVersion)
+                .replace("@DOMAIN@", pasoeDomainName)
+                .replace("@DBNAME@", appDatabaseName)
+                .replace("@DBHOST@", configuredDbHost)
+                .replace("@DBPORT@", configuredDbPort)
+                .replace("@NUM_MSAGENTS_MIN@", numMsAgentsMin)
+                .replace("@NUM_MSAGENTS_MAX@", numMsAgentsMax)
+                .replace("@NUM_AGENT_CONNS@", numAgentConns)
+                .replace("@NUM_ABL_SESSIONS@", numAblSessions)
+                .replace("@NUM_INITIAL_SESSIONS@", numInitialSessions)
+                .replace("@NUM_MIN_AVAIL_SESSIONS@", numMinAvailSessions)
+        }
+    }
+
+    // Copy the ABL code as an APL archive for the primary ABL app
+    from("$distributionDir/${classPackageName}.apl") {
+        into("${oearPrimaryAblAppName}/openedge")
+    }
+
+    // Package a copy of the database schema for deployment.
+    from("${schemaPath}") {
+        include(["*.df", "*.st"])
+        into("${oearPrimaryAblAppName}/tlr/schema")
+    }
+
+    // Package a copy of the schema loader for deployment.
+    from("${schemaOutDir}") {
+        include(["*.r"])
+        into("${oearPrimaryAblAppName}/tlr/schema")
+    }
+}
+
+// Create the ABLApp for the main application's API's as an OEAR bundle
+// See: https://docs.progress.com/bundle/pas-for-openedge-management/page/OpenEdge-Application-Archive-Structure.html
+// Based on https://github.bedford.progress.com/openedge/teamcity-history/blob/a7648109cd4215a7f453d3e118841c9e37cf84c9/build.gradle
+task createMainOEAR {
+    inputs.dir(oearPrimaryAblAppBuildDir)
+
+    File resources = oearPrimaryAblAppBuildDir
+
+    doLast() {
+        // Defer oeant resolution so unrelated tasks (eg. containerize) do not require this dependency.
+        ant.taskdef(
+            name: "ABLApp",
+            classname: "com.progress.oeant.ABLApp",
+            classpath: configurations.OEAntJar.asPath
+        )
+
+        // Run last to ensure archive is created after all other setup is completed.
+        // NOTE: The webapps folder expects either a .war or .zip file, where a .zip
+        // will be extracted atop an oeabl.war and named for the zip file itself.
+        // Therefore, the name must represent the final webapp desired and configured.
+        ant.ABLApp(
+            appName: "${oearPrimaryAblAppName}",
+            archiveBaseName: "${oearPrimaryAblAppName}",
+            destdir: "${buildDir}/pasoe" ) {
+                bin( dir: "$resources/bin" )
+                conf( dir: "$resources/conf" )
+                openedge( dir: "$resources/openedge" )
+                tlr( dir: "$resources/tlr" )
+                webapps( dir: "$resources/webapps" )
+            }
+    }
+}
+
+// Create the ABLApp for the main application's API's as an OEAR bundle
+// See: https://docs.progress.com/bundle/pas-for-openedge-management/page/OpenEdge-Application-Archive-Structure.html
+// Based on https://github.bedford.progress.com/openedge/teamcity-history/blob/a7648109cd4215a7f453d3e118841c9e37cf84c9/build.gradle
+task createMonitorOEAR {
+    inputs.dir(oearMonitorAblAppBuildDir)
+
+    File resources = oearMonitorAblAppBuildDir
+
+    doLast() {
+        // Defer oeant resolution so unrelated tasks (eg. containerize) do not require this dependency.
+        ant.taskdef(
+            name: "ABLApp",
+            classname: "com.progress.oeant.ABLApp",
+            classpath: configurations.OEAntJar.asPath
+        )
+
+        // Run last to ensure archive is created after all other setup is completed.
+        // NOTE: The webapps folder expects either a .war or .zip file, where a .zip
+        // will be extracted atop an oeabl.war and named for the zip file itself.
+        // Therefore, the name must represent the final webapp desired and configured.
+        ant.ABLApp(
+            appName: "${oearMonitorAblAppName}",
+            archiveBaseName: "${oearMonitorAblAppName}",
+            destdir: "${buildDir}/pasoe" ) {
+                bin( dir: "$resources/bin" )
+                conf( dir: "$resources/conf" )
+                openedge( dir: "$resources/openedge" )
+                tlr( dir: "$resources/tlr" )
+                webapps( dir: "$resources/webapps" )
+            }
+    }
+}
+
+// Copy generated OEAR archives into the distribution folder.
+task exportOEAR(type: Copy) {
+    dependsOn tailorContents
+    dependsOn createMainOEAR, createMonitorOEAR
+
+    mustRunAfter checkDist
+
+    inputs.dir(pasoeBuildDir)
+
+    createMainOEAR.mustRunAfter tailorContents
+    createMonitorOEAR.mustRunAfter createMainOEAR
+
+    from(pasoeBuildDir) {
+        include("*.oear")
+    }
+    into(distributionDir)
+}
+
+// Create an installer.zip file containing the installer scripts and components for PASOE instance creation.
+task createInstaller(type: Zip) {
+    dependsOn packageSchema
+    dependsOn exportOEAR
+
+    inputs.dir("$mainResourcePath/install")
+    inputs.files("$distributionDir/${classPackageName}.apl")
+
+    // archiveFile is the destDir + archive name. See https://docs.gradle.org/current/dsl/org.gradle.api.tasks.bundling.Zip.html
+    outputs.file(archiveFile)
+
+    destinationDirectory = distributionDir
+
+    // NOTE: This is named as an unversioned installer file as it will be renamed correctly during the upload to Artifactory.
+    archiveBaseName   = "installer"
+    archiveExtension  = "zip"
+
+    // Include the OEAR created in previous steps.
+    from(pasoeBuildDir){
+        include(["*.oear", "*.zip"])
+        into "${rootProject.name}/ablapps"
+    }
+
+    // Copy the scripts for the installation process, settting permissions as necessary.
+    from("$mainResourcePath/install/bin") {
+        include "*"
+        exclude "*.out"
+        eachFile { fileCopyDetails ->
+            if (fileCopyDetails.name.endsWith('.sh')) {
+                // Set executable bit only for .sh files
+                fileCopyDetails.permissions {
+                    unix("rwxr-xr-x")
+                }
+            }
+        }
+        into "${rootProject.name}/bin"
+    }
+
+    // Include all installer configuration files and replace embedded version numbers for this release.
+    // NOTE: This provides default values (such as port numbers) direct from the Gradle build.
+    from("$mainResourcePath/install/conf"){
+        filter { line ->
+            line
+                .replace("\${pasoeInstanceName}", pasoeInstanceName)
+                .replace("\${oearPrimaryAblAppName}", oearPrimaryAblAppName)
+                .replace("\${oearPrimaryWebAppName}", oearPrimaryWebAppName)
+                .replace("\${oearMonitorAblAppName}", oearMonitorAblAppName)
+                .replace("\${oearMonitorWebAppName}", oearMonitorWebAppName)
+                .replace("\${pasoeDomainName}", pasoeDomainName)
+                .replace("\${pasoeDomainCode}", pasoeDomainCode)
+                .replace("\${pasoeRealmUser}", pasoeRealmUser)
+                .replace("\${pasoeRealmCode}", pasoeRealmCode)
+                .replace("\${pasoeManagerUser}", pasoeManagerUser)
+                .replace("\${pasoeManagerCode}", pasoeManagerCode)
+                .replace("\${pasoeInstanceHttp}", pasoeInstanceHttp)
+                .replace("\${pasoeInstanceHttps}", pasoeInstanceHttps)
+                .replace("\${pasoeInstanceAjp}", pasoeInstanceAjp)
+                .replace("\${pasoeInstanceShut}", pasoeInstanceShut)
+                .replace("\${pasoeInstanceHealth}", pasoeInstanceHealth)
+                .replace("\${tomcatExecutorThreads}", tomcatExecutorThreads)
+                .replace("\${tomcatMinSpareThreads}", tomcatMinSpareThreads)
+                .replace("\${tomcatMaxQueueSize}", tomcatMaxQueueSize)
+                .replace("\${tomcatUriEncoding}", tomcatUriEncoding)
+                .replace("\${tomcatJvmXmxMb}", tomcatJvmXmxMb)
+                .replace("\${tomcatJvmXmsMb}", tomcatJvmXmsMb)
+                .replace("\${tomcatJvmNewSizeMb}", tomcatJvmNewSizeMb)
+                .replace("\${appDatabaseName}", useDatabase ? appDatabaseName : "none")
+                .replace("\${skipDatabaseInstall}", useDatabase ? "false" : "true")
+                .replace("\${dbHostName}", configuredDbHost)
+                .replace("\${dbPortService}", configuredDbPort)
+                .replace("\${dbPortMin}", configuredDbPortMin)
+                .replace("\${dbPortMax}", configuredDbPortMax)
+                .replace("\${dbLockWait}", configuredDbLockWait)
+                .replace("\${classPackageName}", classPackageName)
+                .replace("\${apiVersion}", apiVersion)
+        }
+        into "${rootProject.name}/conf"
+    }
+
+    // Include the readme.txt file explicitly.
+    from("$mainResourcePath/install/readme.txt") {
+        filePermissions {
+            unix("rw-rw-r--")
+        }
+        into "${rootProject.name}"
+    }
+
+    // Provide a manifest file with build information.
+    from("$buildDir/MANIFEST.OE"){
+        expand(packageType: "installer")
+        into "${rootProject.name}"
+    }
+}
+
+// Create an archive with the Grafana k6 tests.
+task packageK6(type: Zip) {
+    // archiveFile is the destDir + archive name. See https://docs.gradle.org/current/dsl/org.gradle.api.tasks.bundling.Zip.html
+    outputs.file(archiveFile)
+
+    destinationDirectory = distributionDir
+
+    archiveBaseName   = "k6-tests"
+    archiveExtension  = "zip"
+
+    from("src/test/framework/k6") {
+        exclude "results*.json"
+        eachFile { fileCopyDetails ->
+            if (fileCopyDetails.name.endsWith('.sh')) {
+                fileCopyDetails.permissions {
+                    unix("rwxr-xr-x")
+                }
+            }
+        }
+        into "tests"
+    }
+}
+
+// Create an archive with the Docker deployment scripts.
+task packageDocker(type: Zip) {
+    // archiveFile is the destDir + archive name. See https://docs.gradle.org/current/dsl/org.gradle.api.tasks.bundling.Zip.html
+    outputs.file(archiveFile)
+
+    destinationDirectory = distributionDir
+
+    archiveBaseName   = "docker-support"
+    archiveExtension  = "zip"
+
+    from("$mainResourcePath/docker")
+}
+
+// Extract the installer in a place where it can be tested.
+task extractInstaller(type: Copy) {
+    dependsOn createInstaller
+
+    File zipFile = createInstaller.archiveFile.get().asFile
+    File outputDir = installerDir
+
+    inputs.file(zipFile)
+    outputs.dir(outputDir)
+
+    from(zipTree(zipFile))
+    into(outputDir)
+}
+
+// Full local build: equivalent to the default tasks but preserves build/DLC to avoid re-extraction.
+// Use this for local development instead of running gradlew with no arguments.
+task local() {
+    dependsOn cleanBuildOutput, packageCode, ablTest, packageDebugListings, checkDist, packageK6, packageDocker, extractInstaller
+
+    packageCode.mustRunAfter          cleanBuildOutput
+    ablTest.mustRunAfter              packageCode
+    packageDebugListings.mustRunAfter ablTest
+    checkDist.mustRunAfter            packageDebugListings
+    packageK6.mustRunAfter            checkDist
+    packageDocker.mustRunAfter        checkDist
+    extractInstaller.mustRunAfter     checkDist
+}
+
+// Performs the standard tasks to create all distributable components.
+// Builds the installer zip while also extracting it to a local directory for easy testing.
+defaultTasks "clean", "packageCode", "ablTest", "packageDebugListings", "checkDist", "packageK6", "packageDocker", "extractInstaller"
+
+/** ***** Docker Container Tasks ***** */
+
+// Location for extracted components from our dependencies
+File componentsDir = file("$buildDir/components")
+
+// Docker file paths
+File dockerfileK6 = file("$projectDir/Dockerfile-k6")
+
+// Define the Docker image names expected to be created/saved.
+String dockerGroup = getSafePropValue("docker_group", "oels")
+String dockerBaseName = getSafePropValue("docker_basename", "oels")
+String dockerAppName = getSafePropValue("docker_appname", "k6")
+String dockerImageVersion = "${dockerGroup}/${dockerAppName}:${apiVersion}"
+String dockerImageLatest = "${dockerGroup}/${dockerAppName}:latest"
+
+// Docker artifact names
+String dockerLatestArchive = "${dockerGroup}-${dockerAppName}-latest.tar"
+String dockerLatestArchivePath = "${buildDir}/${dockerLatestArchive}"
+
+// Extract Docker support files (docker-compose, install scripts, README) from Artifactory.
+// Note: k6 test scripts are downloaded directly by Dockerfile during image build.
+task extractDependencies(type: Copy) {
+    doNotTrackState("Always extract contents")
+
+    // Extract Docker support files (deployment/installation scripts for end-users)
+    from { configurations.dockerSupport.collect { zipTree(it) } }
+
+    into componentsDir
+    dirPermissions {
+        unix(0775)
+    }
+    filePermissions {
+        unix(0664)
+    }
+
+    includeEmptyDirs = false
+
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+    outputs.dir(componentsDir)
+}
+
+// Build the k6 Docker image using the official Grafana k6 base image.
+// The Dockerfile downloads oels-<api_version>-k6-tests.zip from Artifactory during image build.
+task buildClientImage(type: DockerBuildImage) {
+    dependsOn extractDependencies
+    dependsOn echoCurrentBranch
+
+    doNotTrackState("Always build new image")
+
+    inputDir = file(projectDir)
+    dockerFile = dockerfileK6
+
+    images = [dockerImageVersion, dockerImageLatest]
+
+    noCache = true
+
+    buildArgs = [
+        BUILD_VERSION : apiVersion
+    ]
+}
+
+// Save the OELS Docker image to a local file.
+task saveClientImage(type: DockerSaveImage) {
+    dependsOn buildClientImage
+
+    doNotTrackState("Always save built image")
+
+    // Create an archive with a specific name for bundling
+    images = [dockerImageLatest]
+    destFile = file(dockerLatestArchivePath)
+
+    outputs.file(destFile)
+}
+
+// Create folders and copy files which must be included in the distributable archive
+task postDistProcessing() {
+    dependsOn saveClientImage
+
+    doNotTrackState("Always post-process")
+
+    doFirst {
+        // Create directories for the extracted Docker files and supporting scripts
+        // This ensures the folders exist when the final zip is extracted, as they
+        // are used as mount points for the Docker container at runtime.
+        mkdir "${componentsDir}/configs"
+        mkdir "${componentsDir}/docs"
+        mkdir "${componentsDir}/logs"
+    }
+
+    // Remove files/folders that don't need to go in the distribution zip
+    // (eg. entrypoint.sh is baked into the Docker image during build)
+    doLast {
+        delete "${componentsDir}/scripts"
+    }
+}
+
+// Create an OELS image using the configured version.
+task packageOELS(type: Zip) {
+    dependsOn postDistProcessing
+
+    doNotTrackState("Always zip contents")
+
+    // Produce an artifact with a simple name we can rename later
+    archiveBaseName  = "k6client-docker-image"
+    archiveExtension = "zip"
+    destinationDirectory = distributionDir
+
+    // Include the contents of the components folder
+    from("${componentsDir}") {
+        include "**/*"
+    }
+
+    // Include the Docker image created previously
+    from("${buildDir}") {
+        include dockerLatestArchive
+    }
+
+    outputs.file(archiveFile)
+}
+
+task containerize {
+    dependsOn packageOELS
+
+    doLast {
+        logger.lifecycle("Docker containerization complete:")
+        logger.lifecycle("  - Base Image: grafana/k6:2.0.0 (official)")
+        logger.lifecycle("  - Client Image: ${dockerImageVersion}")
+        logger.lifecycle("  - Distribution: ${distributionDir}/k6client-docker-image.zip")
+    }
+}

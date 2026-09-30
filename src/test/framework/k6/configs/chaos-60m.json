@@ -1,0 +1,26 @@
+{
+  "meta": {
+    "name": "chaos-60m",
+    "description": "60-minute chaos run - randomized ramping VU stages across all scenarios. Use for resilience and spike testing.",
+    "version": 1
+  },
+  "run": {
+    "profile": "chaos"
+  },
+  "env": {
+    "BASE_URL":                    "http://127.0.0.1:7780",
+    "MAX_VUS":                     1000,
+    "DURATION":                    60,
+    "IDLE_STAGE_CHANCE":           0.05,
+    "SCENARIO_STAGGER_SECONDS":    0.5,
+    "MIN_THINK_TIME":              0.1,
+    "MAX_THINK_TIME":              1.0,
+    "SEED_RECORD_MAX":             100000,
+    "CRUD_WEIGHT":                 0.9,
+    "NOOP_WEIGHT":                 0.1,
+    "ANOMALY_DISRUPT_WEIGHT":      0.0,
+    "ANOMALY_FILES_WEIGHT":        0.0,
+    "ANOMALY_LEAK_WEIGHT":         0.0,
+    "ANOMALY_SIMULATE_WEIGHT":     0.0
+  }
+}

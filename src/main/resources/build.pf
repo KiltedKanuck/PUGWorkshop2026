@@ -1,0 +1,18 @@
+# PF for compile/build tasks
+# Supports substitution of tokens
+#    - projectDir
+#    - buildDir
+#    - startupParams (passed in via -PablStartupParams=<val>
+
+${startupParams}
+${compilerParams}
+
+# Setting these here because OEDF does not allow them as properties
+-cpinternal undefined
+-cpstream   UTF-8
+
+# Tell us where to find the ADE (read: adecomm) resources
+-baseADE "${dlcHome}/${packageType}"
+
+# Ensure the .Net CLR has been disabled
+-noclr

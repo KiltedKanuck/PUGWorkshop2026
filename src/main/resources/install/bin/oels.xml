@@ -1,0 +1,1622 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="Management Utility for High Load Test Suite" basedir="." default="help">
+
+    <!-- Copyright 2026 Progress Software Corporation -->
+
+    <!--
+        Licensed under the Apache License, Version 2.0 (the "License");
+        you may not use this file except in compliance with the License.
+        You may obtain a copy of the License at
+
+            http://www.apache.org/licenses/LICENSE-2.0
+
+        Unless required by applicable law or agreed to in writing, software
+        distributed under the License is distributed on an "AS IS" BASIS,
+        WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+        See the License for the specific language governing permissions and
+        limitations under the License.
+    -->
+
+    <!-- Utilize a local file for properties. Allows this XML to provide defaults only. -->
+    <property file="${basedir}/../conf/config.properties"/>
+
+    <target name="help" description="Usage Instructions">
+        <init_oe/> <!-- Initialize all OpenEdge properties. -->
+
+        <echo message="${line.separator}Management utility for the High Load Test Suite."/>
+        <echo message="${line.separator}Usage Instructions:"/>
+        <echo message="${line.separator} help       - Prints these usage instructions"/>
+        <echo message="${line.separator} install    - Create a PASOE instance '${instance}' with an available OEAR"/>
+        <echo message="                 http=${http} - Port for HTTP connections"/>
+        <echo message="                 https=${https} - Port for HTTPS connections"/>
+        <echo message="                 shut=${shut} - Tomcat shutdown port"/>
+        <echo message="                 wrkDir=${wrkDir} - Parent directory for PASOE instance"/>
+        <echo message="                 instance=${instance} - Name of the PASOE instance"/>
+        <echo message="                 alias=${alias} - PASOE alias used during install"/>
+        <echo message="                 codepage=${codepage} - Codepage for DB/instance"/>
+        <echo message="                 collation=${collation} - Collation for Codepage"/>
+        <echo message="                 dateformat=${dateformat} - Date Format"/>
+        <echo message="                 numsep=${numsep} - Numeric Separator"/>
+        <echo message="                 numdec=${numdec} - Decimal Character"/>
+        <echo message="${line.separator} startup    - Start the PASOE instance '${instance}' (and embedded database, if available)"/>
+        <echo message="                 timeout=${timeout} - Seconds tcman waits before timing out"/>
+        <echo message="                 This is the primary way to start both PASOE and its managed database"/>
+        <echo message="                 Default web test URL: http://localhost:${http}/test/static/catalog.html"/>
+        <echo message="${line.separator} enablememprof  - Enable ABL memory profiling for the ${primary.ablapp.name} application"/>
+        <echo message="${line.separator} disablememprof - Disable ABL memory profiling for the ${primary.ablapp.name} application"/>
+        <echo message="${line.separator} query      - Show the standard PASOE query output and database holder state"/>
+        <echo message="${line.separator} status     - Show agent/session status for an ABL Application [${primary.ablapp.name}|${monitor.ablapp.name}]"/>
+        <echo message="                 statusapp=${statusapp} - Name of the ABL Application for status"/>
+        <echo message="${line.separator} shutdown   - Stop the PASOE instance '${instance}' (and embedded database, if available)"/>
+
+        <echo message="${line.separator} restart    - Restart the PASOE instance '${instance}' (and embedded database, if available)"/>
+        <echo message="                 timeout=${timeout} - Seconds tcman waits before timing out"/>
+        <echo message="${line.separator} uninstall  - Alias for delete"/>
+        <echo message="${line.separator} delete     - Stop and delete the PASOE instance '${instance}' (and embedded database, if available)"/>
+        <echo message="${line.separator} generate   - Generates a number of sample records for each table for testing"/>
+        <echo message="                 seed=${seed} - Number of seed records to create per table"/>
+        <echo message="                 Reissue this command to generate additional records using a higher seed value"/>
+        <echo message="${line.separator} backup     - Create an offline PROBKUP of the database (DB must not be running)"/>
+        <echo message="                 backupFile=${backupFile} - Destination path for the backup file"/>
+        <echo message="                 compress=${compress} - Enable PROBKUP compression via -com flag (default: false)"/>
+        <echo message="                 compressLevel=${compressLevel} - Compression level when compress=true (default: 3)"/>
+        <echo message="                 Levels: 1=RLE, 2=ZSTD fastest, 3=ZSTD balanced (OE default), 4=ZSTD max"/>
+        <echo message="${line.separator} restore    - Restore the database from a PROREST backup file (DB must not be running)"/>
+        <echo message="                 backupFile=${backupFile} - Path to the backup file to restore from"/>
+        <echo message="${line.separator} archive    - Create a dated diagnostic zip archive of files from the PASOE instance"/>
+    </target>
+
+    <macrodef name="init_env">
+        <sequential>
+            <!-- Access environmental variables via "env.*". -->
+            <property environment="env"/>
+
+            <!-- Set a property if environment is Windows. -->
+            <condition property="isWin">
+                <os family="windows"/>
+            </condition>
+
+            <!-- Set a property if environment is Unix. -->
+            <condition property="isUnix">
+                <os family="unix"/>
+            </condition>
+
+            <!-- Set a property if environment is 64bit. -->
+            <condition property="is64bit">
+                <not>
+                    <or>
+                        <os arch="x86"/>
+                        <os arch="i386"/>
+                    </or>
+                </not>
+            </condition>
+
+            <!-- Set a property for the local OS architecture. -->
+            <condition property="archBuild" value="linuxx86_64" else="nt64">
+                <os family="unix"/>
+            </condition>
+
+            <!-- Set the executable suffix for the OS. -->
+            <condition property="execSuffix" value="" else=".exe">
+                <os family="unix"/>
+            </condition>
+
+            <!-- Set defaults for system resources which should have been supplied by the calling script. -->
+            <property name="systemCpuCount" value="unknown"/>
+            <property name="systemMemorySize" value="unknown"/>
+            <property name="systemHostname" value="unknown"/>
+
+            <!-- Set user-friendly properties using supplied defaults where possible. -->
+            <property name="http" value="${application.port.http}"/>
+            <property name="https" value="${application.port.https}"/>
+            <property name="ajp" value="${application.port.ajp}"/>
+            <property name="shut" value="${application.port.shut}"/>
+            <property name="codepage" value="${application.db.codepage}"/>
+            <property name="collation" value="${application.db.collation}"/>
+            <property name="seed" value="100000"/>
+            <property name="statusapp" value="${primary.ablapp.name}"/>
+        </sequential>
+    </macrodef>
+
+    <macrodef name="init_oe">
+        <sequential>
+            <init_env/> <!-- Initialize environmental and general properties. -->
+
+            <!-- Fail immediately if not a 64-bit OS. -->
+            <fail message="Environment is not 64-bit">
+                <condition>
+                    <not>
+                        <isset property="is64bit"/>
+                    </not>
+                </condition>
+            </fail>
+
+            <!-- Check if DLC is set as an environment variable. -->
+            <fail message="DLC Home path is not set; please run from within a PROENV session">
+                <condition>
+                    <and>
+                        <not><isset property="dlcHome"/></not>
+                        <not><isset property="env.DLC"/></not>
+                    </and>
+                </condition>
+            </fail>
+            <property name="dlcHome" value="${env.DLC}"/>
+
+            <!-- Check if WRKDIR is set as an environment variable. -->
+            <fail message="WRKDIR path is not set; please run from within a PROENV session">
+                <condition>
+                    <and>
+                        <not><isset property="wrkDir"/></not>
+                        <not><isset property="env.WRKDIR"/></not>
+                    </and>
+                </condition>
+            </fail>
+            <property name="wrkDir" value="${env.WRKDIR}"/>
+
+            <!-- Load the current PCT library from DLC. -->
+            <taskdef resource="PCT.properties" classpath="${dlcHome}/pct/PCT.jar"/>
+
+            <!-- Define this property to disable anonymous PCT statistics telemetry. -->
+            <property name="pct.skip.analytics" value=""/>
+
+            <!-- Access the OE version info, and read into a property. -->
+            <ProgressVersion dlcHome="${dlcHome}" majorVersion="oeMajor" minorVersion="oeMinor" revision="oeRev" fullVersion="full"/>
+            <property name="oe.version" value="${oeMajor}.${oeMinor}.${oeRev}"/>
+
+            <!-- Report the system resources, if available. -->
+            <echo message="  System Hostname: ${systemHostname}"/>
+            <echo message=" System CPU Count: ${systemCpuCount}"/>
+            <echo message="Total Memory (MB): ${systemMemorySize}"/>
+
+            <!-- Report the current JAVA_HOME for reference. -->
+            <echo message="JAVA_HOME: ${env.JAVA_HOME}"/>
+
+            <!-- Report relevant OpenEdge locations/versions. -->
+            <echo message=" DLC Home: ${dlcHome}"/>
+            <echo message=" WRK Path: ${wrkDir}"/>
+            <echo message="OpenEdge Version: ${oe.version}"/>
+
+            <!-- Add the appropriate ANT-Contrib library to this environment (v1.0b3 in 12.8+). -->
+            <loadtask resource="net/sf/antcontrib/antcontrib.properties" classfile="${dlcHome}/ant/lib/ant-contrib-1.0b3.jar"/>
+
+            <!-- ant-contrib does not map 'for' in antcontrib.properties. -->
+            <taskdef name="for" classname="net.sf.antcontrib.logic.ForTask" classpath="${dlcHome}/ant/lib/ant-contrib-1.0b3.jar"/>
+
+            <!-- Minimum system memory (MB) required before applying resource-intensive tailoring. -->
+            <property name="minTailoringMemory" value="14336"/>
+
+            <!-- Check if systemMemorySize is a numeric value (not "unknown"). -->
+            <local name="memory.is.numeric"/>
+            <condition property="memory.is.numeric">
+                <matches string="${systemMemorySize}" pattern="^\d+$"/>
+            </condition>
+
+            <!-- Determine whether the system has sufficient memory for resource-intensive tailoring. -->
+            <if>
+                <isset property="memory.is.numeric"/>
+                <then>
+                    <!-- First compare using math: result will be > 0 if systemMemorySize > minTailoringMemory -->
+                    <math result="memory.difference" operand1="${systemMemorySize}" operation="-" operand2="${minTailoringMemory}" datatype="int"/>
+                    <!-- Next check if the result is positive, indicating enough headroom for tailoring. -->
+                    <condition property="has.sufficient.memory">
+                        <matches string="${memory.difference}" pattern="^[1-9]\d*$"/>
+                    </condition>
+                </then>
+                <else>
+                    <echo message="WARNING: systemMemorySize is not numeric ('${systemMemorySize}'). Defaulting to insufficient memory."/>
+                </else>
+            </if>
+            <property name="has.sufficient.memory" value="false"/>
+
+            <!-- Set paths and tools from the OpenEdge DLC path. -->
+            <property name="dlc.bin" value="${dlcHome}${file.separator}bin"/>
+            <condition property="pasman.exec" value="pasman" else="pasman.bat">
+                <os family="unix"/>
+            </condition>
+            <condition property="proutil.exec" value="proutil" else="proutil.bat">
+                <os family="unix"/>
+            </condition>
+            <condition property="probkup.exec" value="probkup" else="probkup.bat">
+                <os family="unix"/>
+            </condition>
+            <condition property="prorest.exec" value="prorest" else="prorest.bat">
+                <os family="unix"/>
+            </condition>
+            <condition property="showcfg.exec" value="showcfg" else="showcfgd.exe">
+                <os family="unix"/>
+            </condition>
+            <condition property="oemanager.name" value="oemanager.sh" else="oemanager.bat">
+                <os family="unix"/>
+            </condition>
+            <condition property="tcman.name" value="tcman.sh" else="tcman.bat">
+                <os family="unix"/>
+            </condition>
+            <condition property="digest.exec" value="digest.sh" else="digest.bat">
+                <os family="unix"/>
+            </condition>
+
+            <!-- Set critical instance name and alias properties for PASOE. -->
+            <property name="catalina.home" value="${dlcHome}${file.separator}servers${file.separator}pasoe"/>
+            <property name="instance" value="${pasoe.instance.name}"/>
+            <property name="alias" value="${instance}"/> <!-- Default to Instance name -->
+
+            <!-- Set paths and tools from the CATALINA_BASE location. -->
+            <property name="catalina.base" value="${wrkDir}${file.separator}${instance}"/>
+            <property name="db.path" value="${catalina.base}${file.separator}db"/>
+            <property name="db.full.path" value="${db.path}${file.separator}${application.db.name}"/>
+            <property name="backupFile" value="${user.dir}${file.separator}${application.db.name}.bkp"/>
+            <property name="compress" value="false"/>
+            <property name="compressLevel" value="3"/>
+            <property name="pas.bin" value="${catalina.base}${file.separator}bin"/>
+            <property name="tcman.util" value="${pas.bin}${file.separator}${tcman.name}"/>
+            <property name="pas.conf.dir" value="${catalina.base}${file.separator}conf"/>
+            <property name="pas.logs.dir" value="${catalina.base}${file.separator}logs"/>
+            <property name="pas.temp.dir" value="${catalina.base}${file.separator}temp"/>
+            <property name="pas.work.dir" value="${catalina.base}${file.separator}work"/>
+
+            <!-- Set properties for deployment files. -->
+            <property name="oear.dir" value="${basedir}${file.separator}..${file.separator}ablapps"/>
+            <property name="primary.ablapp.oear.file" value="${oear.dir}${file.separator}${primary.ablapp.name}.oear"/>
+            <property name="monitor.ablapp.oear.file" value="${oear.dir}${file.separator}${monitor.ablapp.name}.oear"/>
+
+            <!-- Set properties for PASOE management tasks. -->
+            <property name="jsonOpts" value="-json -array"/>
+            <property name="timeout" value="300"/> <!-- Default 300sec -->
+            <property name="serverCmd" value="oeserver"/>
+            <property name="startOpts" value="${serverCmd} -v -start -archive -timeout ${timeout} ${jsonOpts}"/>
+            <property name="stopOpts" value="${serverCmd} -v -stop -force -timeout ${timeout} ${jsonOpts}"/>
+            <property name="restartOpts" value="${serverCmd} -v -restart -force -timeout ${timeout} ${jsonOpts}"/>
+
+            <!-- Support flags for only the 11.7 LTS release. -->
+            <if>
+                <equals arg1="${oeMajor}" arg2="11"/>
+                <then>
+                    <property name="isOE11" value="true"/>
+                    <condition property="isOE117">
+                        <and>
+                            <isset property="isOE11"/>
+                            <equals arg1="${oeMinor}" arg2="7"/>
+                        </and>
+                    </condition>
+                </then>
+            </if>
+
+            <!-- Support flags for 12.x LTS and feature releases. -->
+            <if>
+                <equals arg1="${oeMajor}" arg2="12"/>
+                <then>
+                    <property name="isOE12" value="true"/>
+                    <switch value="${oeMinor}">
+                        <case value="2">
+                            <property name="isOE122" value="true"/>
+                        </case>
+                        <case value="3">
+                            <property name="isOE122" value="true"/>
+                            <property name="isOE123" value="true"/>
+                        </case>
+                        <case value="4">
+                            <property name="isOE122" value="true"/>
+                            <property name="isOE124" value="true"/>
+                        </case>
+                        <case value="5">
+                            <property name="isOE122" value="true"/>
+                            <property name="isOE125" value="true"/>
+                        </case>
+                        <case value="6">
+                            <property name="isOE122" value="true"/>
+                            <property name="isOE126" value="true"/>
+                        </case>
+                        <case value="7">
+                            <property name="isOE122" value="true"/>
+                            <property name="isOE127" value="true"/>
+                        </case>
+                        <case value="8">
+                            <property name="isOE128" value="true"/>
+                        </case>
+                    </switch>
+                </then>
+            </if>
+
+            <!-- Support for 13.x LTS and feature releases. -->
+            <if>
+                <equals arg1="${oeMajor}" arg2="13"/>
+                <then>
+                    <property name="isOE13" value="true"/>
+                </then>
+            </if>
+
+            <!-- We cannot support installation of this feature on OE versions prior to 12.8 -->
+            <condition property="invalidVersion">
+                <or>
+                    <equals arg1="${isOE11}" arg2="true"/>
+                    <equals arg1="${isOE122}" arg2="true"/>
+                    <equals arg1="${isOE123}" arg2="true"/>
+                    <equals arg1="${isOE124}" arg2="true"/>
+                    <equals arg1="${isOE125}" arg2="true"/>
+                    <equals arg1="${isOE126}" arg2="true"/>
+                    <equals arg1="${isOE127}" arg2="true"/>
+                </or>
+            </condition>
+            <fail if="invalidVersion" message="OpenEdge 12.8 or later is required for this feature."/>
+
+            <!-- Check for the utility which will inform us of installed components. -->
+            <require file="${dlc.bin}${file.separator}${showcfg.exec}"/>
+
+            <!-- Execute the "showcfg[d]" utility with -B option and outputs to a local file. -->
+            <local name="progressConfig"/>
+            <property name="progressConfig" value="${basedir}${file.separator}showcfg.out"/>
+            <exec executable="${dlc.bin}${file.separator}${showcfg.exec}"
+                  output="${progressConfig}" failonerror="true">
+                <arg value="-B"/>
+            </exec>
+
+            <!-- Looks at the Progress config output for expected strings identifying what is needed for operation. -->
+            <!-- This will look for a combination of certain bits to raise errors to the user for prerequisites. -->
+            <filecontains file="${progressConfig}" substring="DB-SERVER" findresult="has.RDBMS.Server"/>
+            <filecontains file="${progressConfig}" substring="WKGRP-DB" findresult="has.RDBMS.Workgroup"/>
+            <filecontains file="${progressConfig}" substring="ENT-DB" findresult="has.RDBMS.Enterprise"/>
+            <filecontains file="${progressConfig}" substring="PAS-OE-DEV" findresult="has.PASOE.Dev"/>
+            <filecontains file="${progressConfig}" substring="PAS-OE-PROD" findresult="has.PASOE.Prod"/>
+            <!-- These flags won't be used but might be useful for later features if we need development support. -->
+            <filecontains file="${progressConfig}" substring="4GL-CLIENT" findresult="has.4GL.Client"/>
+            <filecontains file="${progressConfig}" substring="EXTEND-TOOLS" findresult="has.4GL.ADE"/>
+            <filecontains file="${progressConfig}" substring="ADE-SOURCE" findresult="has.4GL.ADESRC"/>
+            <filecontains file="${progressConfig}" substring="ENABLE-RUN" findresult="has.4GL.R2R"/>
+
+            <!-- We require a minimum of the PASOE DEV or PROD licenses, but cannot use the OEDK or Lite versions. -->
+            <condition property="noPASOE">
+                <and>
+                    <equals arg1="${has.PASOE.Dev}" arg2="false"/>
+                    <equals arg1="${has.PASOE.Prod}" arg2="false"/>
+                </and>
+            </condition>
+            <fail if="noPASOE" message="A PAS for OpenEdge product (Dev or Prod) is required for this feature."/>
+
+            <!-- We require a minimum of a Workgroup RDBMS, or whatever version is shipped with PDSOE. -->
+            <!-- Note: The Personal RDBMS is unusable as it ships with a very restrictive user count. -->
+            <condition property="noRDBMS">
+                <and>
+                    <equals arg1="${has.RDBMS.Server}" arg2="false"/> <!-- Minimum of a database server (to run in multi-usr mode) -->
+                    <equals arg1="${has.RDBMS.Workgroup}" arg2="false"/> <!-- Explicitly has the Workgroup RDBMS product installed -->
+                    <equals arg1="${has.RDBMS.Enterprise}" arg2="false"/> <!-- Explicitly has an Enterprise RDBMS product installed -->
+                </and>
+            </condition>
+            <fail if="noRDBMS" message="An OpenEdge RDBMS (Workgroup or higher) is required for this feature."/>
+
+            <if>
+                <isset property="isOE12"/>
+                <then>
+                    <if>
+                        <isset property="isOE128"/>
+                        <then>
+                            <!-- Use the oeserver command for OpenEdge 12.8+ -->
+                            <property name="serverCmd" value="oeserver"/>
+                            <property name="startOpts" value="${serverCmd} -v -start -archive -timeout ${timeout} ${jsonOpts}"/>
+                            <property name="stopOpts" value="${serverCmd} -v -stop -force -timeout ${timeout} ${jsonOpts}"/>
+                        </then>
+                    </if>
+                </then>
+            </if>
+
+            <if>
+                <isset property="isOE13"/>
+                <then>
+                    <!-- Use the oeserver command for OpenEdge 13 -->
+                    <property name="serverCmd" value="oeserver"/>
+                    <property name="startOpts" value="${serverCmd} -v -start -archive -timeout ${timeout} ${jsonOpts}"/>
+                    <property name="stopOpts" value="${serverCmd} -v -stop -force -timeout ${timeout} ${jsonOpts}"/>
+                </then>
+            </if>
+
+            <!-- Attempt to retrieve localization properties from the startup.pf file -->
+            <getparamfromfile file="${dlcHome}${file.separator}startup.pf" paramname="d" resultproperty="dateformat" defaultvalue="mdy"/>
+            <getparamfromfile file="${dlcHome}${file.separator}startup.pf" paramname="numsep" defaultvalue="44"/>
+            <getparamfromfile file="${dlcHome}${file.separator}startup.pf" paramname="numdec" defaultvalue="46"/>
+        </sequential>
+    </macrodef>
+
+    <macrodef name="filecontains">
+        <!-- Usage <filecontains file="_path_to_file_" substring="_text_to_find_"/> -->
+        <attribute name="file"/>
+        <attribute name="substring"/>
+        <attribute name="findresult"/>
+
+        <sequential>
+            <!-- Create a unique temp property name to avoid conflicts -->
+            <local name="temp.file.contents"/>
+
+            <!-- Load file content into a temporary property -->
+            <loadfile property="temp.file.contents" srcFile="@{file}"/>
+
+            <!-- Check if the content contains the substring -->
+            <condition property="@{findresult}">
+                <contains string="${temp.file.contents}" substring="@{substring}"/>
+            </condition>
+
+            <!-- Set default value to false in case not found -->
+            <property name="@{findresult}" value="false"/>
+        </sequential>
+    </macrodef>
+
+    <macrodef name="getparamfromfile">
+        <!-- Usage <getparamfromfile file="_path_to_file_" paramname="_parameter_name_"/> -->
+        <attribute name="file"/>
+        <attribute name="paramname"/>
+        <attribute name="resultproperty" default="@{paramname}"/>
+        <attribute name="defaultvalue" default=""/>
+
+        <sequential>
+            <!-- Create a unique temp property name to avoid conflicts -->
+            <local name="temp.file.contents"/>
+
+            <!-- Load file content into a temporary property -->
+            <loadfile property="temp.file.contents" srcFile="@{file}"/>
+
+            <!-- Use regex to extract the parameter value -->
+            <propertyregex property="@{resultproperty}"
+                           input="${temp.file.contents}"
+                           regexp="-@{paramname}\s+([^\s]+)"
+                           select="\1"
+                           casesensitive="false"/>
+
+            <!-- Set a default value if not found -->
+            <property name="@{resultproperty}" value="@{defaultvalue}"/>
+        </sequential>
+    </macrodef>
+
+    <macrodef name="loadtask">
+        <!-- Usage <loadtask resource="_resource_string_" classfile="_path_to_file_"/> -->
+        <attribute name="resource"/>
+        <attribute name="classfile"/>
+
+        <sequential>
+            <local name="task.file.exists"/>
+            <condition property="task.file.exists">
+                <available file="@{classfile}" type="file"/>
+            </condition>
+
+            <taskdef resource="@{resource}" classpath="@{classfile}"/>
+        </sequential>
+    </macrodef>
+
+    <macrodef name="require">
+        <!-- Usage <require file="_path_to_file_"/> -->
+        <attribute name="file"/>
+        <attribute name="message" default="File @{file} not set or missing"/>
+
+        <sequential>
+            <fail message="@{message}">
+                <condition>
+                    <not>
+                        <available file="@{file}" type="file"/>
+                    </not>
+                </condition>
+            </fail>
+        </sequential>
+    </macrodef>
+
+    <macrodef name="hasExistingDir">
+        <!-- Usage <hasExistingDir folder="_path_to_folder_"/> -->
+        <attribute name="folder"/>
+        <attribute name="message" default="Directory @{folder} already exists!"/>
+
+        <sequential>
+            <fail message="@{message}">
+                <condition>
+                    <available file="@{folder}" type="dir"/>
+                </condition>
+            </fail>
+        </sequential>
+    </macrodef>
+
+    <macrodef name="requireDir">
+        <!-- Usage <requireDir folder="_path_to_folder_"/> -->
+        <attribute name="folder"/>
+        <attribute name="message" default="Directory @{folder} not set or missing"/>
+
+        <sequential>
+            <fail message="@{message}">
+                <condition>
+                    <not>
+                        <available file="@{folder}" type="dir"/>
+                    </not>
+                </condition>
+            </fail>
+        </sequential>
+    </macrodef>
+
+    <macrodef name="log_create_failure">
+        <attribute name="code"/>
+        <attribute name="file"/>
+        <sequential>
+            <!-- Extract and show the last line using script -->
+            <local name="__logcontent__"/>
+            <loadfile property="__logcontent__" srcFile="@{file}"/>
+            <echo message="Failed to fully create the PASOE instance, command failed with exit code: @{code}"/>
+            <echo message="${__logcontent__}"/>
+        </sequential>
+    </macrodef>
+
+    <macrodef name="create_keystore">
+        <attribute name="domainName"/>
+        <attribute name="domainCode"/>
+        <sequential>
+            <!-- Create a new domain registry keystore file for an application domain. -->
+            <echo message="|-- Creating the ABLDomainRegistry.keystore for a default application domain '@{domainName}'..."/>
+
+            <!-- This file is a constant, static instance so it can be declared once. -->
+            <property name="keystore.destination" value="${pas.conf.dir}${file.separator}ABLDomainRegistry.keystore"/>
+
+            <!-- This utility is a platform-specific executable so it can be declared once. -->
+            <condition property="gendomreg.exec" value="gendomreg" else="gendomreg.bat">
+                <os family="unix"/>
+            </condition>
+
+            <!-- Use local temp files so this macro can be called repeatedly without global property conflicts. -->
+            <local name="new.domain.registry.csv"/>
+            <tempfile property="new.domain.registry.csv" destDir="${basedir}" prefix="ABLDomainRegistry_" suffix=".csv"/>
+            <local name="new.domain.registry.keystore"/>
+            <tempfile property="new.domain.registry.keystore" destDir="${basedir}" prefix="ABLDomainRegistry_" suffix=".keystore"/>
+
+            <!-- Generate the new domain registry keystore file from the temporary CSV file. -->
+            <echo message="@{domainName},@{domainCode}" file="${new.domain.registry.csv}"/>
+            <exec executable="${dlcHome}${file.separator}bin${file.separator}${gendomreg.exec}" failonerror="true">
+                <arg value="${new.domain.registry.csv}"/>
+                <arg value="${new.domain.registry.keystore}"/>
+            </exec>
+            <copy file="${new.domain.registry.keystore}" overwrite="true" verbose="true"
+                  tofile="${keystore.destination}"/>
+
+            <!-- Clean up temporary files used during keystore creation. -->
+            <echo message="|-- Removing temporary files..."/>
+            <delete file="${new.domain.registry.csv}" verbose="true"/>
+            <delete file="${new.domain.registry.keystore}" verbose="true"/>
+        </sequential>
+    </macrodef>
+
+    <macrodef name="create_realm_token">
+        <attribute name="realmUser"/>
+        <attribute name="realmCode"/>
+        <sequential>
+            <!-- Create a new realm token file for an OERealm authentication process. -->
+            <echo message="|-- Creating the RealmToken.cp for the user '@{realmUser}'..."/>
+
+            <!-- This file is a constant, static instance so it can be declared once. -->
+            <local name="token.destination"/>
+            <property name="token.destination"
+                      value="${catalina.base}${file.separator}common${file.separator}lib${file.separator}RealmToken.cp"/>
+
+            <!-- This utility is a platform-specific executable so it can be declared once. -->
+            <condition property="genspacp.exec" value="genspacp" else="genspacp.bat">
+                <os family="unix"/>
+            </condition>
+
+            <!-- Syntax: genspacp -password <text> [-user <text> -domain <text> -role <text> -file <text>] -->
+            <!-- The default values for -domain will be "OESPA" and for -role is "SPAClient". -->
+            <exec executable="${dlcHome}${file.separator}bin${file.separator}${genspacp.exec}" failonerror="true">
+                <arg value="-user"/>
+                <arg value="@{realmUser}"/>
+                <arg value="-password"/>
+                <arg value="@{realmCode}"/>
+                <arg value="-file"/>
+                <arg value="${token.destination}"/>
+            </exec>
+        </sequential>
+    </macrodef>
+
+    <macrodef name="secure_management_webapps">
+        <sequential>
+            <!-- See https://docs.progress.com/bundle/openedge-security-and-auditing/page/Secure-the-Tomcat-Manager-and-OpenEdge-Manager-web-applications.html -->
+            <echo message="|-- Securing the Tomcat Manager and OEManager webapps..."/>
+
+            <!-- Back up the original tomcat-users.xml before writing a secured replacement. -->
+            <local name="tomcat.users.file"/>
+            <property name="tomcat.users.file" value="${pas.conf.dir}${file.separator}tomcat-users.xml"/>
+            <local name="tomcat.users.backup.file"/>
+            <property name="tomcat.users.backup.file" value="${tomcat.users.file}.bak"/>
+            <require file="${tomcat.users.file}" message="Tomcat users file is missing: ${tomcat.users.file}"/>
+            <echo message="|--- Backing up Tomcat users file to ${tomcat.users.backup.file}..."/>
+            <copy file="${tomcat.users.file}" tofile="${tomcat.users.backup.file}" overwrite="true"/>
+
+            <!-- Back up the original server.xml before updating with secured options. -->
+            <local name="server.xml.file"/>
+            <property name="server.xml.file" value="${pas.conf.dir}${file.separator}server.xml"/>
+            <local name="server.xml.backup.file"/>
+            <property name="server.xml.backup.file" value="${server.xml.file}.bak"/>
+            <require file="${server.xml.file}" message="Tomcat server.xml is missing: ${server.xml.file}"/>
+            <echo message="|--- Backing up server.xml to ${server.xml.backup.file}..."/>
+            <copy file="${server.xml.file}" tofile="${server.xml.backup.file}" overwrite="true"/>
+
+            <!-- Adjust the UserDatabaseRealm in server.xml to use the PBKDF2 CredentialHandler. -->
+            <echo message="|--- Updating UserDatabaseRealm in server.xml with PBKDF2 CredentialHandler..."/>
+            <replaceregexp file="${server.xml.file}"
+                           match="(?s)&lt;!--\s*feature:begin:UserDatabase:on\s*--&gt;.*?&lt;!--\s*feature:end:UserDatabase:on\s*--&gt;"
+                           replace="&lt;!-- feature:begin:UserDatabase:on --&gt;&#xA;        &lt;Realm className=&quot;org.apache.catalina.realm.UserDatabaseRealm&quot; resourceName=&quot;UserDatabase&quot;&gt;&#xA;          &lt;CredentialHandler className=&quot;org.apache.catalina.realm.SecretKeyCredentialHandler&quot;&#xA;                algorithm=&quot;PBKDF2WithHmacSHA512&quot;&#xA;                iterations=&quot;10000&quot;&#xA;                saltLength=&quot;16&quot;&#xA;                keyLength=&quot;256&quot; /&gt;&#xA;        &lt;/Realm&gt;&#xA;&lt;!-- feature:end:UserDatabase:on --&gt;"/>
+
+            <!-- Generate a PBKDF2 password hash for use with the new CredentialHandler settings. -->
+            <!-- Runs: digest -a PBKDF2WithHmacSHA512 -i 10000 -s 16 -k 256 -h "org.apache.catalina.realm.SecretKeyCredentialHandler" <code> -->
+            <local name="management.secret.digest"/>
+            <exec executable="${catalina.home}${file.separator}bin${file.separator}${digest.exec}"
+                  outputproperty="management.secret.digest" failonerror="true">
+                <env key="CATALINA_HOME" value="${catalina.home}"/>
+                <arg value="-a"/>
+                <arg value="PBKDF2WithHmacSHA512"/>
+                <arg value="-i"/>
+                <arg value="10000"/>
+                <arg value="-s"/>
+                <arg value="16"/>
+                <arg value="-k"/>
+                <arg value="256"/>
+                <arg value="-h"/>
+                <arg value="org.apache.catalina.realm.SecretKeyCredentialHandler"/>
+                <arg value="${tomcat.management.code}"/>
+            </exec>
+
+            <!-- Extract just the hash from the digest command output, formatted as <plainText>:<hashValue> -->
+            <local name="management.secret.hash"/>
+            <propertyregex property="management.secret.hash"
+                           input="${management.secret.digest}"
+                           regexp="^[^:]+:(.+)$"
+                           select="\1"
+                           casesensitive="false"/>
+
+            <!-- Stop install if digest output did not produce a parseable hash value. -->
+            <fail message="Unable to parse digest output for management credentials.">
+                <condition>
+                    <not>
+                        <isset property="management.secret.hash"/>
+                    </not>
+                </condition>
+            </fail>
+
+            <!-- Create a new tomcat-users.xml with only the secured management account and required roles. -->
+            <!-- Note the opening and closing of the CDATA section to prevent output of errant empty lines. -->
+            <echo message="|--- Writing new Tomcat management credentials file at ${tomcat.users.file}..."/>
+            <echo file="${tomcat.users.file}" append="false"><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<tomcat-users xmlns="http://tomcat.apache.org/xml"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://tomcat.apache.org/xml tomcat-users.xsd"
+              version="1.0">
+    <role rolename="ROLE_PSCAdmin"/>
+    <role rolename="ROLE_PSCOper"/>
+    <role rolename="ROLE_PSCUser"/>
+    <role rolename="ROLE_PSCNone"/>
+    <user username="${tomcat.management.user}"
+          password="${management.secret.hash}"
+          roles="ROLE_PSCAdmin,ROLE_PSCOper,ROLE_PSCUser"/>
+</tomcat-users>
+]]></echo>
+
+            <!-- Locate the OEManager properties file that is shipped within the PASOE bin directory. -->
+            <local name="oemanager.props.file"/>
+            <property name="oemanager.props.file" value="${pas.bin}${file.separator}oemanager.properties"/>
+            <local name="oemanager.props.exists"/>
+            <available file="${oemanager.props.file}" property="oemanager.props.exists"/>
+
+            <!-- Append the values needed for OEManager webapp usage when the shipped properties file exists. -->
+            <if>
+                <isset property="oemanager.props.exists"/>
+                <then>
+                    <echo message="|--- Updating OEManager properties file at ${oemanager.props.file}..."/>
+                    <echo file="${oemanager.props.file}" append="true"><![CDATA[
+# Customized Instance Values
+userid=${tomcat.management.user}
+passwd=${tomcat.management.code}
+ablapp=${primary.ablapp.name}
+webapp=${primary.webapp.name}
+]]></echo>
+                </then>
+                <else>
+                    <echo message="|--- OEManager properties file not found at ${oemanager.props.file}; skipping update to properties."/>
+                </else>
+            </if>
+        </sequential>
+    </macrodef>
+
+    <macrodef name="tailor_instance">
+        <sequential>
+            <!-- Check if expected directories exists. -->
+            <requireDir folder="${catalina.base}"/>
+
+            <echo message="|- Starting tailoring for the instance..."/>
+
+            <!-- Set the maximum executor threads for Tomcat. -->
+            <if>
+                <equals arg1="${has.sufficient.memory}" arg2="true"/>
+                <then>
+                    <echo message="|-- Setting maximum executor threads for Tomcat"/>
+                    <exec executable="${tcman.util}" failonerror="false">
+                        <arg line="config psc.as.executor.maxthreads=${tomcat.executor.threads}"/>
+                    </exec>
+
+                    <!-- Set the minimum spare executor threads for Tomcat. -->
+                    <echo message="|-- Setting minimum spare executor threads for Tomcat"/>
+                    <exec executable="${tcman.util}" failonerror="false">
+                        <arg line="config psc.as.executor.minsparethreads=${tomcat.executor.minspare}"/>
+                    </exec>
+
+                    <!-- Set the maximum queue size for the HTTP/S connectors. -->
+                    <echo message="|-- Setting maximum queue size for HTTP/S connectors for Tomcat"/>
+                    <exec executable="${tcman.util}" failonerror="false">
+                        <arg line="config psc.as.http.maxqueuesize=${tomcat.queue.size}"/>
+                    </exec>
+                    <exec executable="${tcman.util}" failonerror="false">
+                        <arg line="config psc.as.https.maxqueuesize=${tomcat.queue.size}"/>
+                    </exec>
+                </then>
+                <else>
+                    <echo message="|-- Skipping executor thread tailoring (insufficient system memory: ${systemMemorySize} MB)."/>
+                </else>
+            </if>
+
+            <!-- Default encoding should be UTF-8, but allow for overrides. -->
+            <echo message="|-- Setting URI encoding to ${tomcat.uri.encoding} for Tomcat"/>
+            <exec executable="${tcman.util}" failonerror="false">
+                <arg line="config psc.as.http.uriencoding=${tomcat.uri.encoding}"/>
+            </exec>
+
+            <!-- Adjust the AJP13 listening address for Tomcat. -->
+            <echo message="|-- Limit the AJP13 address to localhost for Tomcat"/>
+            <exec executable="${tcman.util}" failonerror="false">
+                <arg line="config psc.as.ajp13.address=127.0.0.1"/>
+            </exec>
+
+            <!-- Set compression limits lower to catch most payloads. -->
+            <echo message="|-- Decreasing minimum for GZIP compression on Tomcat"/>
+            <exec executable="${tcman.util}" failonerror="false">
+                <arg line="config psc.as.compress.min=128"/>
+            </exec>
+
+            <!-- Change the JVM options for the Tomcat server. -->
+            <local name="jvm.props.file"/>
+            <property name="jvm.props.file" value="${pas.conf.dir}${file.separator}jvm.properties"/>
+            <local name="jvm.props.file.exists"/>
+            <available file="${jvm.props.file}" property="jvm.props.file.exists"/>
+            <if>
+                <isset property="jvm.props.file.exists"/>
+                <then>
+                    <if>
+                        <equals arg1="${has.sufficient.memory}" arg2="true"/>
+                        <then>
+                            <echo message="|-- Configuring JVM heap options in ${jvm.props.file}..."/>
+                            <replaceregexp file="${jvm.props.file}"
+                                           match="-Xms\d+[mMgG]"
+                                           replace="-Xms${tomcat.jvm.xms.mb}m"
+                                           byline="true"/>
+                            <replaceregexp file="${jvm.props.file}"
+                                           match="-Xmx\d+[mMgG]"
+                                           replace="-Xmx${tomcat.jvm.xmx.mb}m"
+                                           byline="true"/>
+                            <replaceregexp file="${jvm.props.file}"
+                                           match="-XX:NewSize=\d+[mMgG]"
+                                           replace="-XX:NewSize=${tomcat.jvm.newsize.mb}m"
+                                           byline="true"/>
+                            <replaceregexp file="${jvm.props.file}"
+                                           match="-XX:MaxNewSize=\d+[mMgG]"
+                                           replace="-XX:MaxNewSize=${tomcat.jvm.newsize.mb}m"
+                                           byline="true"/>
+                        </then>
+                        <else>
+                            <echo message="|-- Skipping JVM heap tailoring (insufficient system memory: ${systemMemorySize} MB)."/>
+                        </else>
+                    </if>
+                </then>
+            </if>
+
+            <!-- Set the Tomcat instance to prefer IPv4 over IPv6. -->
+            <local name="catalina.props.file"/>
+            <property name="catalina.props.file" value="${pas.conf.dir}${file.separator}catalinaopts.properties"/>
+            <local name="catalina.props.file.exists"/>
+            <available file="${catalina.props.file}" property="catalina.props.file.exists"/>
+            <if>
+                <isset property="catalina.props.file.exists"/>
+                <then>
+                    <echo message="|-- Configuring networking preferences in ${catalina.props.file}..."/>
+                    <local name="catalina.has.ipv4"/>
+                    <filecontains file="${catalina.props.file}"
+                                  substring="-Djava.net.preferIPv4Stack=true"
+                                  findresult="catalina.has.ipv4"/>
+                    <if>
+                        <equals arg1="${catalina.has.ipv4}" arg2="false"/>
+                        <then>
+                            <echo file="${catalina.props.file}" append="true"><![CDATA[
+-Djava.net.preferIPv4Stack=true
+-Djava.net.preferIPv6Addresses=false
+]]></echo>
+                        </then>
+                        <else>
+                            <echo message="|-- Networking preferences already set; skipping."/>
+                        </else>
+                    </if>
+                </then>
+            </if>
+
+            <!-- Generate a new keystore file using the application domain and passcode provided. -->
+            <create_keystore domainName="${application.domain.name}"
+                             domainCode="${application.domain.code}"/>
+
+            <!-- Generate a new realm token file using the application domain and passcode provided. -->
+            <create_realm_token realmUser="${application.realm.user}"
+                                realmCode="${application.realm.code}"/>
+
+            <!-- Secure the Tomcat Manager and OEManager webapps. -->
+            <secure_management_webapps/>
+
+            <!-- Enable the HealthCheck feature for the PAS instance. -->
+            <enable_healthcheck/>
+        </sequential>
+    </macrodef>
+
+    <macrodef name="enable_healthcheck">
+        <sequential>
+            <!-- Check if expected directories exists. -->
+            <requireDir folder="${catalina.base}"/>
+
+            <echo message="|- Enable the OpenEdge HealthScanner..."/>
+
+            <!-- Enable the HealthCheck feature for the PAS instance. -->
+            <echo message="|-- Enabling the HealthCheck feature"/>
+            <exec executable="${tcman.util}" failonerror="false">
+                <arg line="feature HealthCheck=on"/>
+            </exec>
+
+            <!-- Set the port for the HealthCheck feature. -->
+            <echo message="|-- Setting port for HealthCheck feature"/>
+            <exec executable="${tcman.util}" failonerror="false">
+                <arg line="config psc.as.healthcheck.port=${application.port.health}"/>
+            </exec>
+
+            <!-- Enable health data collection for the PAS instance. -->
+            <echo message="|-- Enabling health data collection"/>
+            <exec executable="${tcman.util}" failonerror="false">
+                <arg line="config psc.as.health.enabled=true"/>
+            </exec>
+
+            <!-- Set health probes to not fail on critical values; adjust as necessary. -->
+            <local name="health.config.file"/>
+            <property name="health.config.file" value="${catalina.base}/conf/health.config"/>
+            <local name="health.config.backup"/>
+            <property name="health.config.backup" value="${catalina.base}/conf/health.config.bak"/>
+            <copy file="${health.config.file}" tofile="${health.config.backup}" verbose="true"/>
+            <echo message="|-- Adjusting health configuration file defaults"/>
+            <replaceregexp
+                file="${health.config.file}"
+                match='"failOnCritical"         : true'
+                replace='"failOnCritical"         : false'
+                byline="true"/>
+        </sequential>
+    </macrodef>
+
+    <macrodef name="update_ablapp">
+        <!--
+            Extracts @{ablappName}.oear from the installer ablapps/ staging directory (${oear.dir}),
+            then copies .apl, .map, and .config files into the live PASOE instance ablapps/ directory.
+            Note: Only the primary ABLApp should contain the application's main .apl file.
+        -->
+        <attribute name="ablappName"/>
+        <sequential>
+            <!-- Source OEAR: <installer>/ablapps/@{ablappName}.oear, set via oear.dir in init_oe -->
+            <local name="ablapp.oear.source"/>
+            <property name="ablapp.oear.source" value="${oear.dir}${file.separator}@{ablappName}.oear"/>
+
+            <!-- Extraction target: sibling folder next to the OEAR file -->
+            <local name="ablapp.oear.extract.dir"/>
+            <property name="ablapp.oear.extract.dir" value="${oear.dir}${file.separator}@{ablappName}"/>
+
+            <!-- Deployment target: live PASOE instance ablapps/@{ablappName}/openedge -->
+            <local name="ablapp.dest.dir"/>
+            <property name="ablapp.dest.dir" value="${catalina.base}${file.separator}ablapps${file.separator}@{ablappName}${file.separator}openedge"/>
+
+            <require file="${ablapp.oear.source}" message="OEAR archive not found: ${ablapp.oear.source}"/>
+
+            <echo message="Extracting '${ablapp.oear.source}' to '${ablapp.oear.extract.dir}'..."/>
+            <unzip src="${ablapp.oear.source}" dest="${ablapp.oear.extract.dir}" overwrite="true"/>
+            <echo message="Extraction complete: ${ablapp.oear.extract.dir}"/>
+
+            <requireDir folder="${ablapp.dest.dir}" message="PASOE ablapps openedge directory not found: ${ablapp.dest.dir}"/>
+            <echo message="Copying .apl, .map, and .config files from '${ablapp.oear.extract.dir}${file.separator}openedge' to '${ablapp.dest.dir}'..."/>
+            <copy todir="${ablapp.dest.dir}" overwrite="true" verbose="true">
+                <fileset dir="${ablapp.oear.extract.dir}${file.separator}openedge">
+                    <include name="*.apl"/>
+                    <include name="*.map"/>
+                    <include name="*.config"/>
+                </fileset>
+            </copy>
+        </sequential>
+    </macrodef>
+
+    <target name="create">
+        <!-- Alias for the install task. -->
+        <antcall target="install"/>
+    </target>
+
+    <target name="install">
+        <init_oe/> <!-- Set standard environment variables. -->
+
+        <!-- Check if expected WRK directory exists. -->
+        <requireDir folder="${wrkDir}"/>
+
+        <!-- Check that an existing directory is not already present. -->
+        <hasExistingDir folder="${catalina.base}"/>
+
+        <!-- Check if the user was given the warning about write access to PASOE files. -->
+        <if>
+            <isset property="writeAccessWarning"/>
+            <then>
+                <fail message="WARNING: Write access issues detected, halting install."/>
+            </then>
+        </if>
+
+        <!-- Create the PAS instance using the values (or defaults) provided. -->
+        <local name="create.instance.log.file"/>
+        <property name="create.instance.log.file"
+                  value="${basedir}${file.separator}create_${instance}.log"/>
+        <echo message="${line.separator}Creating PAS instance '${instance}' (aka. '${alias}') at ${catalina.base} with ports ${http}/${https}/${ajp}/${shut}..."/>
+        <echo message="|-> Writing output to ${create.instance.log.file}"/>
+        <exec dir="${dlc.bin}" executable="${pasman.exec}" failonerror="false"
+              output="${create.instance.log.file}"
+              resultproperty="create.status">
+            <arg value="create"/>
+            <arg value="-v"/>
+            <arg value="-f"/> <!-- Deploys manager and oemanager webapp. -->
+            <arg value="-p"/>
+            <arg value="${http}"/>
+            <arg value="-P"/>
+            <arg value="${https}"/>
+            <arg value="-j"/>
+            <arg value="${ajp}"/>
+            <arg value="-s"/>
+            <arg value="${shut}"/>
+            <arg value="-u"/>
+            <arg value="${tomcat.management.user}:${tomcat.management.code}"/> <!-- Uses the custom credentials for management. -->
+            <arg value="-N"/>
+            <arg value="${alias}"/>
+            <arg value="${catalina.base}"/>
+            <arg value="dummy"/> <!-- Set a default ABL Application name. -->
+        </exec>
+
+        <!-- Determine whether the command exited correctly. -->
+        <condition property="create.failed">
+            <not>
+                <equals arg1="${create.status}" arg2="0" />
+            </not>
+        </condition>
+
+        <!-- If failed, call macro to show info -->
+        <if>
+            <isset property="create.failed" />
+            <then>
+                <log_create_failure code="${create.status}" file="${create.instance.log.file}"/>
+                <fail message="Stopping task because of a critical error."/>
+            </then>
+        </if>
+
+        <!-- Alert the user if system memory may be insufficient for tailoring. -->
+        <if>
+            <equals arg1="${has.sufficient.memory}" arg2="false"/>
+            <then>
+                <echo message="|-- NOTICE: System memory is ${memory.difference} MB short of the required memory for certain tailoring actions."/>
+            </then>
+        </if>
+
+        <!-- Perform tailoring of the instance itself. -->
+        <tailor_instance/>
+
+        <!-- Export install properties to a new properties file. -->
+        <property name="generated.install.props" value="${catalina.base}${file.separator}install.properties"/>
+        <echo message="|-> Storing installer properties to ${generated.install.props}"/>
+        <propertyfile file="${generated.install.props}">
+            <entry key="pasoe.instance.name" value="${pasoe.instance.name}"/>
+            <entry key="primary.ablapp.name" value="${primary.ablapp.name}"/>
+            <entry key="primary.webapp.name" value="${primary.webapp.name}"/>
+            <entry key="monitor.ablapp.name" value="${monitor.ablapp.name}"/>
+            <entry key="monitor.webapp.name" value="${monitor.webapp.name}"/>
+            <entry key="application.domain.name" value="${application.domain.name}"/>
+            <entry key="application.domain.code" value="${application.domain.code}"/>
+            <entry key="tomcat.management.user" value="${tomcat.management.user}"/>
+            <entry key="tomcat.management.code" value="${tomcat.management.code}"/>
+            <entry key="application.db.name" value="${application.db.name}"/>
+            <entry key="application.db.host.name" value="${application.db.host.name}"/>
+            <entry key="application.db.port.service" value="${application.db.port.service}"/>
+            <entry key="application.db.port.min" value="${application.db.port.min}"/>
+            <entry key="application.db.port.max" value="${application.db.port.max}"/>
+            <entry key="application.db.lockwait" value="${application.db.lockwait}"/>
+            <entry key="application.db.codepage" value="${application.db.codepage}"/>
+            <entry key="application.db.collation" value="${application.db.collation}"/>
+            <entry key="dateformat" value="${dateformat}"/>
+            <entry key="numsep" value="${numsep}"/>
+            <entry key="numdec" value="${numdec}"/>
+            <entry key="system.detected.cpus" value="${systemCpuCount}"/>
+            <entry key="system.detected.hostname" value="${systemHostname}"/>
+            <entry key="system.detected.memory" value="${systemMemorySize}"/>
+        </propertyfile>
+
+        <!-- Deploy the primary OpenEdge Application aRchive (OEAR) for operations. -->
+        <local name="import.primary.log.file"/>
+        <property name="import.primary.log.file"
+                  value="${basedir}${file.separator}import_${primary.ablapp.name}.log"/>
+        <echo message="|- Importing an OpenEdge Application aRchive (OEAR) for '${primary.ablapp.name}'..."/>
+        <echo message="|--> Writing output to ${import.primary.log.file}"/>
+        <exec executable="${tcman.util}" failonerror="true"
+              output="${import.primary.log.file}"
+              resultproperty="import.primary.status">
+            <arg value="import"/>
+            <arg value="-v"/>
+            <arg value="${primary.ablapp.oear.file}"/>
+        </exec>
+
+        <!-- Scan the import output file for WARNING lines which could indicate deployment problems. -->
+        <filecontains file="${import.primary.log.file}"
+                      substring="WARNING"
+                      findresult="import.primary.has.warnings"/>
+        <if>
+            <equals arg1="${import.primary.has.warnings}" arg2="true"/>
+            <then>
+                <echo message="${primary.ablapp.name} OEAR import completed with WARNINGS. Review ${import.primary.log.file} for potential problems with the OpenEdge Application deployment."/>
+            </then>
+        </if>
+
+        <!-- Deploy the monitor OpenEdge Application aRchive (OEAR) for statistics. -->
+        <local name="import.monitor.log.file"/>
+        <property name="import.monitor.log.file"
+                  value="${basedir}${file.separator}import_${monitor.ablapp.name}.log"/>
+        <echo message="|- Importing an OpenEdge Application aRchive (OEAR) for '${monitor.ablapp.name}'..."/>
+        <echo message="|--> Writing output to ${import.monitor.log.file}"/>
+        <exec executable="${tcman.util}" failonerror="true"
+              output="${import.monitor.log.file}"
+              resultproperty="import.monitor.status">
+            <arg value="import"/>
+            <arg value="-v"/>
+            <arg value="${monitor.ablapp.oear.file}"/>
+        </exec>
+
+        <!-- Scan the import output file for WARNING lines which could indicate deployment problems. -->
+        <filecontains file="${import.monitor.log.file}"
+                      substring="WARNING"
+                      findresult="import.monitor.has.warnings"/>
+        <if>
+            <equals arg1="${import.monitor.has.warnings}" arg2="true"/>
+            <then>
+                <echo message="${monitor.ablapp.name} OEAR import completed with WARNINGS. Review ${import.monitor.log.file} for potential problems with the OpenEdge Application deployment."/>
+            </then>
+        </if>
+
+        <!-- Inform the user as to what they could or should do next. -->
+        <echo message="${line.separator}Installation completed successfully."/>
+        <echo message="${line.separator}Next, run the 'start' or 'startup' task to start the PASOE instance."/>
+        <echo message="${line.separator}NOTE: If this is a fresh installation you will need sample data for the database:"/>
+        <echo message="- If you have an existing database backup file, use the 'restore' task prior to the 'start[up]' task."/>
+        <echo message="- Run the 'start[up]' task then 'generate' (after successful startup) to seed the database with records."/>
+    </target>
+
+    <target name="uninstall">
+        <!-- Alias for the delete task. -->
+        <antcall target="delete"/>
+    </target>
+
+    <target name="delete">
+        <init_oe/> <!-- Set standard environment variables. -->
+
+        <!-- Make sure the instance has been stopped. -->
+        <antcall target="shutdown"/>
+
+        <!-- Check if expected WRK directory exists. -->
+        <requireDir folder="${catalina.base}" message="PASOE instance does not exist at expected location: ${catalina.base}"/>
+
+        <!-- Check if the user was given the warning about write access to PASOE files. -->
+        <if>
+            <isset property="writeAccessWarning"/>
+            <then>
+                <fail message="WARNING: Write access issues detected, halting delete."/>
+            </then>
+        </if>
+
+        <!-- Delete the PAS instance. -->
+        <local name="delete.instance.log.file"/>
+        <property name="delete.instance.log.file"
+                  value="${basedir}${file.separator}delete_${instance}.log"/>
+        <echo message="${line.separator}Deleting PAS instance at ${catalina.base}..."/>
+        <echo message="|--> Writing output to ${delete.instance.log.file}"/>
+        <exec dir="${dlc.bin}" executable="${pasman.exec}" failonerror="false"
+              output="${delete.instance.log.file}"
+              resultproperty="delete.status">
+            <arg value="delete"/>
+            <arg value="-v"/>
+            <arg value="-y"/>
+            <arg value="${catalina.base}"/>
+        </exec>
+
+        <!-- Warn if pasman delete reported a non-zero exit code. -->
+        <condition property="pasman.delete.failed">
+            <not>
+                <equals arg1="${delete.status}" arg2="0"/>
+            </not>
+        </condition>
+        <if>
+            <isset property="pasman.delete.failed"/>
+            <then>
+                <echo message="WARNING: PASOE deletion exited with code ${delete.status}. Review ${delete.instance.log.file} for details."/>
+            </then>
+        </if>
+
+        <!-- Check if catalina.base still exists after pasman delete; force remove if so. -->
+        <local name="catalina.base.still.exists"/>
+        <available file="${catalina.base}" type="dir" property="catalina.base.still.exists"/>
+        <if>
+            <isset property="catalina.base.still.exists"/>
+            <then>
+                <echo message="NOTICE: PASOE instance directory still exists at ${catalina.base} after deletion attempt. Performing direct folder removal..."/>
+                <delete dir="${catalina.base}" verbose="true" failonerror="false"/>
+
+                <!-- Check if the directory survived the forced removal (likely held-open files). -->
+                <local name="catalina.base.force.delete.failed"/>
+                <available file="${catalina.base}" type="dir" property="catalina.base.force.delete.failed"/>
+                <if>
+                    <isset property="catalina.base.force.delete.failed"/>
+                    <then>
+                        <echo message="WARNING: Directory ${catalina.base} could not be fully removed. One or more files may still be held open by another process. Manually stop any remaining processes and delete the directory."/>
+                    </then>
+                </if>
+            </then>
+        </if>
+
+        <!-- Output something to indicate the task naturally ended. -->
+        <echo message="Deletion Complete"/>
+    </target>
+
+    <!-- PAS instance management -->
+
+    <target name="stop">
+        <!-- Alias for the shutdown task. -->
+        <antcall target="shutdown"/>
+    </target>
+
+    <target name="shutdown">
+        <init_oe/> <!-- Initialize all OpenEdge properties. -->
+
+        <requireDir folder="${catalina.base}" message="PASOE instance does not exist at expected location: ${catalina.base}"/>
+
+        <!-- Attempt PASOE shutdown if tcman utility is still present. -->
+        <local name="tcman.util.exists"/>
+        <available file="${tcman.util}" property="tcman.util.exists"/>
+        <if>
+            <isset property="tcman.util.exists"/>
+            <then>
+                <exec executable="${tcman.util}" failonerror="true">
+                    <arg line="${stopOpts}"/>
+                </exec>
+            </then>
+            <else>
+                <echo message="NOTICE: tcman utility not found at '${tcman.util}'. PASOE shutdown was skipped; continuing with local DB checks."/>
+            </else>
+        </if>
+
+        <!-- If a local database appears to be active, attempt a local DB shutdown script. -->
+        <local name="db.file.exists"/>
+        <available file="${db.full.path}.db" property="db.file.exists"/>
+        <local name="db.lock.exists"/>
+        <available file="${db.full.path}.lk" property="db.lock.exists"/>
+
+        <if>
+            <and>
+                <isset property="db.file.exists"/>
+                <isset property="db.lock.exists"/>
+            </and>
+            <then>
+                <local name="instance.shutdown.name"/>
+                <condition property="instance.shutdown.name" value="instance_shutdown.sh" else="instance_shutdown.bat">
+                    <os family="unix"/>
+                </condition>
+
+                <local name="instance.shutdown.exec"/>
+                <property name="instance.shutdown.exec" value="${pas.bin}${file.separator}${instance.shutdown.name}"/>
+
+                <if>
+                    <available file="${instance.shutdown.exec}" type="file"/>
+                    <then>
+                        <echo message="Detected local DB lock file at ${db.full.path}.lk; running ${instance.shutdown.exec}..."/>
+                        <exec executable="${instance.shutdown.exec}" failonerror="false"/>
+                    </then>
+                    <else>
+                        <echo message="NOTICE: Local DB lock file detected but shutdown script was not found: ${instance.shutdown.exec}"/>
+                        <echo message="NOTICE: Instance bin directory may be partially removed. Manually stop the database and remove remaining files/folders as needed."/>
+                    </else>
+                </if>
+            </then>
+        </if>
+    </target>
+
+    <target name="start">
+        <!-- Alias for the startup task. -->
+        <antcall target="startup"/>
+    </target>
+
+    <target name="startup">
+        <init_oe/> <!-- Initialize all OpenEdge properties. -->
+
+        <requireDir folder="${catalina.base}" message="PASOE instance not found at ${catalina.base}. Please run the 'install' task first to create the instance."/>
+
+        <exec executable="${tcman.util}" failonerror="false">
+            <arg line="${startOpts}"/>
+        </exec>
+    </target>
+
+    <target name="restart">
+        <init_oe/> <!-- Initialize all OpenEdge properties. -->
+
+        <requireDir folder="${catalina.base}" message="PASOE instance not found at ${catalina.base}. Please run the 'install' task first to create the instance."/>
+
+        <exec executable="${tcman.util}" failonerror="false">
+            <arg line="${restartOpts}"/>
+        </exec>
+    </target>
+
+    <target name="query">
+        <init_oe/> <!-- Initialize all OpenEdge properties. -->
+
+        <requireDir folder="${catalina.base}" message="PASOE instance not found at ${catalina.base}. Please run the 'install' task first to create the instance."/>
+        <require file="${dlc.bin}${file.separator}${proutil.exec}"/>
+
+        <!-- Build the full logical database path and verify backing .db file exists before querying. -->
+        <local name="db.file.exists"/>
+        <available file="${db.full.path}.db" property="db.file.exists"/>
+
+        <if>
+            <isset property="db.file.exists"/>
+            <then>
+                <!-- Define a property to capture the output (returned as an error) from the command. -->
+                <echo message="${line.separator}Checking Database Status: ${db.full.path}"/>
+                <exec dir="${dlc.bin}" executable="${proutil.exec}" failonerror="false" outputproperty="db.state">
+                    <arg value="${db.full.path}"/>
+                    <arg line="-C holder"/>
+                </exec>
+
+                <!-- Output message based on success (no output) or failure (message present). -->
+                <if>
+                    <equals arg1="${db.state}" arg2=""/>
+                    <then>
+                        <echo message="Database is not running."/>
+                    </then>
+                    <else>
+                        <echo message="${db.state}"/>
+                    </else>
+                </if>
+            </then>
+            <else>
+                <echo message="NOTICE: Database file not found at '${db.full.path}.db'. Skipping status check."/>
+            </else>
+        </if>
+
+        <echo message=""/> <!-- Empty line for readability -->
+
+        <property name="commandLine" value="${serverCmd} -v -query ${jsonOpts}"/>
+        <exec executable="${tcman.util}" failonerror="false">
+            <arg line="${commandLine}"/>
+        </exec>
+    </target>
+
+    <target name="archive">
+        <init_oe/> <!-- Initialize all OpenEdge properties. -->
+
+        <requireDir folder="${catalina.base}"
+                    message="PASOE instance not found at ${catalina.base}. Please run the 'install' task first to create the instance."/>
+
+        <!-- Generate a timestamp for the zip file name. -->
+        <tstamp>
+            <format property="archive.ts" pattern="yyyyMMdd-HHmmss"/>
+        </tstamp>
+
+        <!-- Define the output zip file path in the user's current working directory. -->
+        <local name="archive.zip.file"/>
+        <property name="archive.zip.file" value="${user.dir}${file.separator}${instance}-${archive.ts}.zip"/>
+
+        <!-- Include specific directories and file types in the zip file for archiving results. -->
+        <echo message="Creating diagnostic archive for the '${instance}' (aka. '${alias}') instance: ${archive.zip.file}"/>
+        <zip destfile="${archive.zip.file}">
+            <!-- From /bin/: all status_* files placed into a status/ folder in the archive. -->
+            <zipfileset dir="${pas.bin}" prefix="status" includes="status_*" erroronmissingdir="false"/>
+
+            <!-- Entire /logs/ folder copied as-is. -->
+            <zipfileset dir="${pas.logs.dir}" prefix="logs" erroronmissingdir="false"/>
+
+            <!-- /temp/ folder: only .log files, copied recursively. -->
+            <zipfileset dir="${pas.temp.dir}" prefix="temp" includes="**/*.log" erroronmissingdir="false"/>
+
+            <!-- /work/ folder: only .oemp files, copied recursively. -->
+            <zipfileset dir="${pas.work.dir}" prefix="work" includes="**/*.oemp" erroronmissingdir="false"/>
+        </zip>
+
+        <echo message="Archive created: ${archive.zip.file}"/>
+    </target>
+
+    <target name="clean">
+        <init_oe/> <!-- Initialize all OpenEdge properties. -->
+
+        <!-- Cleans the PASOE directories which hold transient data. Run ONLY after stopping the instance and archiving any contents! -->
+        <requireDir folder="${catalina.base}" message="PASOE instance not found at ${catalina.base}, nothing to clean."/>
+
+        <!-- Delete all contents (files and subdirectories) from the logs/, temp/, and work/ folders. -->
+        <delete includeemptydirs="true" verbose="true" failonerror="false">
+            <fileset dir="${pas.logs.dir}" includes="**/*" erroronmissingdir="false"/>
+        </delete>
+        <delete includeemptydirs="true" verbose="true" failonerror="false">
+            <fileset dir="${pas.temp.dir}" includes="**/*" erroronmissingdir="false"/>
+        </delete>
+        <delete includeemptydirs="true" verbose="true" failonerror="false">
+            <fileset dir="${pas.work.dir}" includes="**/*" erroronmissingdir="false"/>
+        </delete>
+
+        <!-- Delete status_* snapshot files from the bin/ folder. -->
+        <delete verbose="true" failonerror="false">
+            <fileset dir="${pas.bin}" includes="status_*" erroronmissingdir="false"/>
+        </delete>
+
+        <echo message="Clean completed for instance '${instance}'."/>
+    </target>
+
+    <target name="enablelogging">
+        <init_oe/> <!-- Initialize all OpenEdge properties. -->
+
+        <requireDir folder="${catalina.base}" message="PASOE instance not found at ${catalina.base}, cannot enable logging."/>
+
+        <!-- Locate the PASOE logging properties files under CATALINA_BASE/conf. -->
+        <local name="logging.pasoe.props.file"/>
+        <property name="logging.pasoe.props.file" value="${catalina.base}${file.separator}conf${file.separator}logging-pasoe.properties"/>
+        <local name="logging.pasoe.props.exists"/>
+        <available file="${logging.pasoe.props.file}" type="file" property="logging.pasoe.props.exists"/>
+        <!-- Enables INFO logging for all ABL Applications (reflected in <abl_app_name>.<date>.log files). -->
+        <if>
+            <isset property="logging.pasoe.props.exists"/>
+            <then>
+                <echo message="Setting psc.as.logging.oeabl.level=INFO in ${logging.pasoe.props.file}"/>
+                <replaceregexp file="${logging.pasoe.props.file}"
+                                match="(^\s*psc\.as\.logging\.oeabl\.level\s*=\s*)WARN"
+                                replace="\1INFO"
+                                byline="true"/>
+            </then>
+        </if>
+
+        <!-- Locate the PASOE ABL application logging XML file under CATALINA_BASE/conf. -->
+        <local name="logging.ablapp.xml.file"/>
+        <property name="logging.ablapp.xml.file" value="${catalina.base}${file.separator}conf${file.separator}logging-ablapp.xml"/>
+        <local name="logging.ablapp.xml.exists"/>
+        <available file="${logging.ablapp.xml.file}" type="file" property="logging.ablapp.xml.exists"/>
+        <!-- Enables INFO logging for connections via the ABLSession pool manager (aka. Session Manager). -->
+        <if>
+            <isset property="logging.ablapp.xml.exists"/>
+            <then>
+                <echo message="Uncommenting and setting appserv.PoolMgt.Connection logger to INFO in ${logging.ablapp.xml.file}"/>
+                <replaceregexp file="${logging.ablapp.xml.file}"
+                                match="^(\s*)&lt;!--\s*(&lt;logger name=&quot;com\.progress\.appserv\.PoolMgt\.Connection&quot; level=&quot;)WARN(&quot;/&gt;)\s*--&gt;"
+                                replace="\1\2INFO\3"
+                                byline="true"/>
+            </then>
+        </if>
+    </target>
+
+    <target name="enablememprof">
+        <init_oe/> <!-- Initialize all OpenEdge properties. -->
+
+        <local name="instance.startup.pf"/>
+        <property name="instance.startup.pf"
+                  value="${catalina.base}${file.separator}ablapps${file.separator}${primary.ablapp.name}${file.separator}openedge${file.separator}startup.pf"/>
+        <require file="${instance.startup.pf}" message="Instance startup.pf not found: ${instance.startup.pf}"/>
+
+        <echo message="${line.separator}Enabling memory profiling in ${instance.startup.pf}"/>
+        <replaceregexp file="${instance.startup.pf}"
+                       byline="true"
+                       match="^#(-profileMemory\s+.*)$"
+                       replace="\1"/>
+    </target>
+
+    <target name="disablememprof">
+        <init_oe/> <!-- Initialize all OpenEdge properties. -->
+
+        <local name="instance.startup.pf"/>
+        <property name="instance.startup.pf"
+                  value="${catalina.base}${file.separator}ablapps${file.separator}${primary.ablapp.name}${file.separator}openedge${file.separator}startup.pf"/>
+        <require file="${instance.startup.pf}" message="Instance startup.pf not found: ${instance.startup.pf}"/>
+
+        <echo message="${line.separator}Disabling memory profiling in ${instance.startup.pf}"/>
+        <replaceregexp file="${instance.startup.pf}"
+                       byline="true"
+                       match="^(-profileMemory\s+.*)$"
+                       replace="#\1"/>
+    </target>
+
+    <target name="status">
+        <init_oe/> <!-- Initialize all OpenEdge properties. -->
+
+        <requireDir folder="${catalina.base}" message="PASOE instance not found at ${catalina.base}. Please run the 'install' task first to create the instance."/>
+        <require file="${pas.bin}${file.separator}${oemanager.name}"/>
+
+        <!-- Get info about the current agents/sessions available -->
+        <exec executable="${pas.bin}${file.separator}${oemanager.name}" failonerror="true">
+            <arg value="status"/>
+            <arg line="ablapp=${statusapp}"/>
+        </exec>
+    </target>
+
+    <target name="generate">
+        <init_oe/> <!-- Initialize all OpenEdge properties. -->
+
+        <!-- Verify the database directory exists before proceeding. -->
+        <requireDir folder="${db.path}" message="Database directory does not exist at expected location: ${db.path}"/>
+
+        <!-- Verify the output directory exists before proceeding. -->
+        <requireDir folder="${pas.temp.dir}" message="Output directory does not exist at expected location: ${pas.temp.dir}"/>
+
+        <!-- Build the full logical database path and verify the backing .db file is present. -->
+        <local name="db.file.exists"/>
+        <available file="${db.full.path}.db" property="db.file.exists"/>
+
+        <!-- Fail immediately if the database backing file is not present in the expected location. -->
+        <fail message="Database file not found at ${db.full.path}.db">
+            <condition>
+                <not>
+                    <isset property="db.file.exists"/>
+                </not>
+            </condition>
+        </fail>
+
+        <!-- PCTDynRun will fail with a clear error if the database is not available. -->
+        <echo message="Checking database tables for generated records (expected per table: ${seed})..."/>
+        <PCTDynRun
+            dlcHome="${dlcHome}"
+            graphicalMode="false"
+            tempDir="${pas.temp.dir}"
+            procedure="OpenEdge/LoadSuite/Common/Util/GenSportsData"
+            stackSize="4096">
+            <propath>
+                <pathelement path="${catalina.base}/ablapps/${primary.ablapp.name}/openedge/OpenEdge.LoadSuite.apl"/>
+                <pathelement path="${catalina.base}/ablapps/${primary.ablapp.name}/openedge"/>
+            </propath>
+            <DBConnection dbName="${application.db.name}" dbDir="${db.path}"/>
+            <Parameter name="MaxRecords" value="${seed}"/>
+        </PCTDynRun>
+    </target>
+
+    <target name="backup">
+        <init_oe/> <!-- Initialize all OpenEdge properties. -->
+
+        <!-- Require that the database backing file exists before attempting a backup. -->
+        <require file="${db.full.path}.db" message="Database file not found at ${db.full.path}.db"/>
+
+        <!-- Fail if the database lock file exists; this means the database is still running. -->
+        <local name="db.lock.exists"/>
+        <available file="${db.full.path}.lk" property="db.lock.exists"/>
+        <fail if="db.lock.exists" message="Database lock file detected at ${db.full.path}.lk; ensure the database is stopped before taking a backup."/>
+
+        <!-- Run PROBKUP to create an offline backup of the database. -->
+        <!-- When compress=true, pass -com and -comlevel: 1=RLE, 2=ZSTD fastest, 3=ZSTD balanced (OE default), 4=ZSTD max. -->
+        <echo message="Creating backup of '${db.full.path}' to '${backupFile}' (compressed: ${compress})..."/>
+        <if>
+            <equals arg1="${compress}" arg2="true"/>
+            <then>
+                <exec dir="${dlc.bin}" executable="${probkup.exec}" failonerror="true">
+                    <arg value="${db.full.path}"/>
+                    <arg value="${backupFile}"/>
+                    <arg value="-verbose"/>
+                    <arg value="-com"/>
+                    <arg line="-comlevel ${compressLevel}"/>
+                </exec>
+            </then>
+            <else>
+                <exec dir="${dlc.bin}" executable="${probkup.exec}" failonerror="true">
+                    <arg value="${db.full.path}"/>
+                    <arg value="${backupFile}"/>
+                    <arg value="-verbose"/>
+                </exec>
+            </else>
+        </if>
+        <echo message="Backup completed: ${backupFile}"/>
+    </target>
+
+    <target name="restore">
+        <init_oe/> <!-- Initialize all OpenEdge properties. -->
+
+        <!-- Require that the backup file exists before attempting a restore. -->
+        <require file="${backupFile}" message="Backup file not found at ${backupFile}; set 'backupFile' to the path of the backup to restore."/>
+
+        <!-- Fail if the database lock file exists; this means the database is still running. -->
+        <local name="db.lock.exists"/>
+        <available file="${db.full.path}.lk" property="db.lock.exists"/>
+        <fail if="db.lock.exists" message="Database lock file detected at ${db.full.path}.lk; ensure the database is stopped before restoring a backup."/>
+
+        <!-- Run PROREST to restore the database from the backup file. -->
+        <!-- Supply "yes" via stdin to automatically confirm overwrite of an existing database. -->
+        <echo message="Restoring '${db.full.path}' from '${backupFile}'..."/>
+        <exec dir="${dlc.bin}" executable="${prorest.exec}" failonerror="true" inputstring="yes">
+            <arg value="${db.full.path}"/>
+            <arg value="${backupFile}"/>
+            <arg value="-verbose"/>
+        </exec>
+        <echo message="Restore completed: ${db.full.path}"/>
+    </target>
+
+    <target name="update">
+        <init_oe/> <!-- Initialize all OpenEdge properties. -->
+
+        <!-- For quick deployments of rebuilt code, use this to update specific files in a running PASOE instance. -->
+        <update_ablapp ablappName="${primary.ablapp.name}"/>
+        <update_ablapp ablappName="${monitor.ablapp.name}"/>
+
+        <!-- Restart the PASOE instance to pick up the updated deployment. -->
+        <antcall target="restart"/>
+    </target>
+
+    <target name="correlate">
+        <init_oe/> <!-- Initialize all OpenEdge properties. -->
+
+        <requireDir folder="${catalina.base}" message="PASOE instance not found at ${catalina.base}. Please run the 'install' task first to create the instance."/>
+
+        <!-- Shared timestamp for correlation output files. -->
+        <tstamp>
+            <format property="correlate.ts" pattern="yyyyMMdd-HHmmss"/>
+        </tstamp>
+
+        <!-- Step 1: Read CATALINA_BASE/logs/localhost-access.%d{yyyy-MM-dd}.log, per psc.as.logging.access.fileName in logging-tomcat.properties -->
+        <requireDir folder="${pas.logs.dir}" message="Log directory not found: ${pas.logs.dir}"/>
+
+        <!-- Optional: Define hard-coded text fragments to ignore for access log extraction (edit as needed). -->
+        <local name="access.filter.pattern"/>
+        <property name="access.filter.pattern" value="/health|/metrics|/favicon\.ico|pmprobe"/>
+
+        <!-- Matches within the default pattern set via psc.as.logging.access.pattern in logging-tomcat.properties -->
+        <!-- %h %l %reqAttribute{OEReq.userId} [%date{"yyyy-MM-dd'T'HH:mm:ss.SSSXXX"}] "%r" %s %b %reqAttribute{OEReq.requestId} %D %n -->
+        <!-- Filter for non-success statuses (anything except 200, 201, 204, 302). -->
+        <local name="access.error.regex"/>
+        <property name="access.error.regex"
+                  value="^(?!.*(?:${access.filter.pattern}))\S+\s+-\s+\S+\s+\[[^\]]+\]\s+&quot;[A-Z]+\s+[^&quot;]+\s+HTTP/[0-9.]+&quot;\s+(?!(?:200|201|204|302)\b)\d{3}\s+(?:-|\d+)\s+\S+\s+\d+\s*$"/>
+
+        <!-- Output goes to the user's current working directory. -->
+        <local name="filtered.access.log.file"/>
+        <property name="filtered.access.log.file"
+                  value="${user.dir}${file.separator}localhost-access.filtered-${correlate.ts}.log"/>
+
+        <echo message="Writing filtered access log to ${filtered.access.log.file}..."/>
+        <concat destfile="${filtered.access.log.file}" fixlastline="true">
+            <fileset dir="${pas.logs.dir}" includes="localhost-access.*.log"/>
+            <filterchain>
+                <linecontainsregexp>
+                    <regexp pattern="${access.error.regex}"/>
+                </linecontainsregexp>
+            </filterchain>
+        </concat>
+        <echo message="Filtered access log file created: ${filtered.access.log.file}"/>
+
+        <!-- Step 2: Filter DOHEvents temp logs and exclude noisy INIT lines. -->
+        <local name="pas.temp.dir.exists"/>
+        <available file="${pas.temp.dir}" type="dir" property="pas.temp.dir.exists"/>
+
+        <local name="events.filter.pattern"/>
+        <property name="events.filter.pattern" value="${primary.ablapp.name}.DOHEvents-*.log"/>
+
+        <local name="events.exclude.regex"/>
+        <property name="events.exclude.regex" value="^(?!.*\s-\sINIT\s-\s).*$"/>
+
+        <local name="filtered.events.log.file"/>
+        <property name="filtered.events.log.file"
+                  value="${user.dir}${file.separator}${primary.ablapp.name}.DOHEvents-filtered-${instance}-${correlate.ts}.log"/>
+
+        <if>
+            <isset property="pas.temp.dir.exists"/>
+            <then>
+                <echo message="Collecting filtered DOHEvents entries from ${pas.temp.dir}"/>
+                <echo message="Writing filtered DOHEvents log to ${filtered.events.log.file}..."/>
+
+                <concat destfile="${filtered.events.log.file}" fixlastline="true">
+                    <fileset dir="${pas.temp.dir}" includes="${events.filter.pattern}"/>
+                    <filterchain>
+                        <linecontainsregexp>
+                            <regexp pattern="${events.exclude.regex}"/>
+                        </linecontainsregexp>
+                    </filterchain>
+                </concat>
+
+                <echo message="Filtered DOHEvents file created: ${filtered.events.log.file}"/>
+            </then>
+        </if>
+    </target>
+
+</project>
