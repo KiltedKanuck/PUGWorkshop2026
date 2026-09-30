@@ -1,5 +1,5 @@
 {
-  "name": "OpenEdgeLoadSuite",
+  "name": "OpenEdgeDevSuite",
   "version": "1.0",
   "oeversion": "ESAP",
   "graphicalMode": false,
@@ -8,22 +8,20 @@
   "buildDirectory": "rcode",
   "buildPath": [
     { "type": "source", "path": "src/main/abl", "build": "rcode/main" },
-    { "type": "source", "path": "src/main/abl/OpenEdge/LoadSuite", "build": "rcode/main" },
-    { "type": "source", "path": "src/main/abl/OpenEdge/PUG", "build": "rcode/main" },
+    { "type": "source", "path": "src/main/abl/OpenEdge/Workshop", "build": "rcode/main" },
     { "type": "source", "path": "src/main/resources", "build": "rcode/main" },
     { "type": "source", "path": "src/test/abl", "build": "rcode/test" },
     { "type": "source", "path": "src/test/abl/OpenEdge", "build": "rcode/test" },
     { "type": "source", "path": "src/test/resources", "build": "rcode/test" },
     { "type": "propath", "path": "src/main/abl" },
-    { "type": "propath", "path": "src/main/abl/OpenEdge/LoadSuite" },
-    { "type": "propath", "path": "src/main/abl/OpenEdge/PUG" },
+    { "type": "propath", "path": "src/main/abl/OpenEdge/Workshop" },
     { "type": "propath", "path": "${DLC}/tty/netlib/OpenEdge.Net.apl", "documentation": "openedge.json" },
     { "type": "propath", "path": "${DLC}/tty/ablunit.pl", "documentation": "openedge.json" }
   ],
   "dbConnections": [
     {
       "name": "thrasher",
-      "connect": "-db thrasher -H localhost -S 11000 -RO",
+      "connect": "-db ./build/db/thrasher -RO",
       "schemaFile": "./src/main/resources/schema/thrasher.df",
       "aliases": ["statsdb"]
     }

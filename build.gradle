@@ -12,6 +12,8 @@
 import com.progress.gradle.abl.tasks.*
 import groovy.io.FileType
 import groovy.json.*
+import groovy.xml.XmlParser
+import groovy.xml.XmlNodePrinter
 import java.time.*
 import java.lang.management.ManagementFactory
 import com.sun.management.OperatingSystemMXBean
@@ -92,6 +94,16 @@ def requireVersionFormat = { String key, String value ->
     value
 }
 
+// Obtain release stage via openedge-version plugin (as openedge_release_stage) or use a default of "develop"
+// This should return either "develop" or "release" to create a folder name of "oe-maven-[develop|release]"
+String maven_build_type = getSafePropValue("build_stage", openedge_release_stage ?: "develop")
+logger.quiet("Using Build Type: $maven_build_type")
+
+// Obtain OE version via openedge-version plugin (as openedge_version) or use a custom (local) version
+String oe_build_version = System.getenv("build_target_oe_version") ?: project.findProperty("build_target_oe_version") ?: openedge_version
+logger.quiet("OE Build Version: $oe_build_version")
+requireVersionFormat("OE version", oe_build_version)
+
 // Determine the OS environment for env.dlcType
 String dlcType = System.getenv("dlcType") ?: project.findProperty("dlcType") ?: null
 
@@ -121,25 +133,19 @@ if (!["nt", "nt64", "linuxx86_64"].contains(dlcType)) {
 String packageType = "tty"
 logger.quiet("Detected package: $packageType")
 
-// Obtain OE version via openedge-version plugin (as openedge_version) or use a custom (local) version
-String oe_build_version = System.getenv("build_target_oe_version") ?: project.findProperty("build_target_oe_version") ?: openedge_version
-logger.quiet("OE Build Version: $oe_build_version")
-requireVersionFormat("OE version", oe_build_version)
-
-// Obtain release stage via openedge-version plugin (as openedge_release_stage) or use a default of "develop"
-// This should return either "develop" or "release" to create a folder name of "oe-maven-[develop|release]"
-String maven_build_type = getSafePropValue("build_stage", openedge_release_stage ?: "develop")
-logger.quiet("Using Build Type: $maven_build_type")
-
 // Determine the compiler options as provided via an ablCompilerOpts property;
 // one or more of req-ret-val, req-full-kw, req-full-name, req-fld-qual can be used, in a comma-delimited value
 String[] ablCompOpts = getSafePropValue("ablCompilerOpts").split(",")
 
-// Lets us run a subset of the tests. All tests will be compiled; only these will be actually run
-String ablTestFilter = getSafePropValue("ablTestFilter", "**/*.r")
+// Selects which tests to run: "lang" (eg. math, string) or "db" (record tests); requires explicit opt-in
+// Usage: gradlew ablTest -PtestType=[lang|db|none] (default: lang)
+String ablTestType = getSafePropValue("testType", "lang")
+if (!(["none", "lang", "db"].contains(ablTestType))) {
+    logger.warn("Invalid testType: '${ablTestType}', must be 'lang' or 'db'")
+}
 
-// Set a default list of tests to be excluded.
-ext.ablTestExclusions = ["Mock/**"]
+// Optionally run one method from each test selected by ablTestFilter.
+String ablTestCase = getSafePropValue("ablTestCase")
 
 // Global debug flag
 Boolean dbgProp = getSafePropValue("dbg", "false").toBoolean()
@@ -170,16 +176,16 @@ String pasoeInstanceHttps = requireNumericPropValue("pasoe_instance_https", getS
 String pasoeInstanceAjp = requireNumericPropValue("pasoe_instance_ajp", getSafePropValue("pasoe_instance_ajp", "7782"))
 String pasoeInstanceShut = requireNumericPropValue("pasoe_instance_shut", getSafePropValue("pasoe_instance_shut", "7784"))
 String pasoeInstanceHealth = requireNumericPropValue("pasoe_instance_health", getSafePropValue("pasoe_instance_health", "7785"))
-String oearPrimaryAblAppName = requirePropValue("oear_primary_ablapp_name", getSafePropValue("oear_primary_ablapp_name", "LoadSuite"))
-String oearPrimaryWebAppName = requirePropValue("oear_primary_webapp_name", getSafePropValue("oear_primary_webapp_name", "loadsuite"))
-String oearMonitorAblAppName = requirePropValue("oear_monitor_ablapp_name", getSafePropValue("oear_monitor_ablapp_name", "LoadMonitor"))
+String oearPrimaryAblAppName = requirePropValue("oear_primary_ablapp_name", getSafePropValue("oear_primary_ablapp_name", "DevSuite"))
+String oearPrimaryWebAppName = requirePropValue("oear_primary_webapp_name", getSafePropValue("oear_primary_webapp_name", "devsuite"))
+String oearMonitorAblAppName = requirePropValue("oear_monitor_ablapp_name", getSafePropValue("oear_monitor_ablapp_name", "DevMonitor"))
 String oearMonitorWebAppName = requirePropValue("oear_monitor_webapp_name", getSafePropValue("oear_monitor_webapp_name", "monitor"))
 
 // Names and passcodes for management and authentication.
 String pasoeDomainName = getSafePropValue("pasoe_domain_name", pasoeInstanceName)
 String pasoeDomainCode = getSafePropValue("pasoe_domain_code", oearPrimaryAblAppName)
 String pasoeRealmUser = getSafePropValue("pasoe_realm_user", "RealmClient")
-String pasoeRealmCode = getSafePropValue("pasoe_realm_code", "OELoadSuite")
+String pasoeRealmCode = getSafePropValue("pasoe_realm_code", "OEDevSuite")
 String pasoeManagerUser = getSafePropValue("pasoe_manager_user", "tomcat")
 String pasoeManagerCode = getSafePropValue("pasoe_manager_code", "tomcat")
 
@@ -233,6 +239,7 @@ String configuredDbPort = getSafePropValue("db_port", "")
 String configuredDbPortMin = getSafePropValue("db_port_min", "")
 String configuredDbPortMax = getSafePropValue("db_port_max", "")
 String configuredDbLockWait = getSafePropValue("db_lockwait", "10") // Default (minimum) is 10 seconds
+String configuredDbBiGrow = requirePropValue("db_bi_grow", getSafePropValue("db_bi_grow", "4")) // Default (additional) is 4 clusters
 
 if (useDatabase) {
     configuredDbHost = requirePropValue("db_host", configuredDbHost, "when db_name enables database usage")
@@ -258,11 +265,16 @@ File databaseDir = file("$buildDir/db")
 File distributionDir = file("$buildDir/dist")
 File listingOutDir = file("$buildDir/debugList")
 File installerDir = file("$buildDir/installer")
+File pasoeBuildDir = file("$buildDir/pasoe")
 File preprocessOutDir = file("$buildDir/preprocess")
+File profilerOutDir = file("$buildDir/profiler")
+File rcodeOutDir = file("$buildDir/rcode")
 File resourcesDir = file("$buildDir/resources")
+File reportsDir = file("$buildDir/reports")
 File schemaOutDir = file("$buildDir/schema")
 File testsDir = file("$buildDir/tests")
 File xrefOutDir = file("$buildDir/xref")
+File manifestFile = file("$buildDir/MANIFEST.OE")
 
 // Common directories for bundling of PASOE components
 File pasoeSourceDir = file("$mainResourcePath/pasoe")
@@ -270,7 +282,6 @@ File oearPrimaryAblAppDir = file("$pasoeSourceDir/${oearPrimaryAblAppName}")
 File oearPrimaryWebAppDir = file("$oearPrimaryAblAppDir/webapps")
 File oearMonitorAblAppDir = file("$pasoeSourceDir/${oearMonitorAblAppName}")
 File oearMonitorWebAppDir = file("$oearMonitorAblAppDir/webapps")
-File pasoeBuildDir = file("$buildDir/pasoe")
 File oearPrimaryAblAppBuildDir = file("$pasoeBuildDir/${oearPrimaryAblAppName}")
 File oearMonitorAblAppBuildDir = file("$pasoeBuildDir/${oearMonitorAblAppName}")
 
@@ -309,7 +320,7 @@ logger.quiet("Using API Version: $apiVersion")
 requireVersionFormat("API version", apiVersion)
 
 abl {
-    rcodeDir = file("$buildDir/rcode")
+    rcodeDir = rcodeOutDir
     avmOptions {
         tmpDir      = avmTempDir.path
         tty.enabled = (packageType == "tty")
@@ -354,6 +365,7 @@ configurations {
     OpenEdgeLicense
     test
     compile
+    antJunit  // Ant's JUnit library for test report generation
     OEAntJar
     dockerSupport
 }
@@ -381,17 +393,34 @@ dependencies {
     compile("com/progress/openedge/abltools:serveradmin:${oe_build_version}:sources@pl") { changing = true }
 
     // Dependencies needed to run the tests
+    // Note: This will use the project's APL created by the build for testing; all other APLs come from Artifactory.
     test("com/progress/openedge/abltools:corelib:${oe_build_version}:${dlcType}_${packageType}@apl") { changing = true }
     test("com/progress/openedge/abltools:ablunit:${oe_build_version}:${dlcType}_${packageType}@apl") { changing = true }
     test("com/progress/openedge/abltools:netlib:${oe_build_version}:${dlcType}_${packageType}@apl") { changing = true }
     test("com/progress/openedge/abltools:serveradmin:${oe_build_version}:${dlcType}_${packageType}@apl") { changing = true }
 
+    // Ant's JUnit library for generating HTML test reports
+    antJunit("org.apache.ant:ant-junit:${antJunitVersion}@jar")
+
     // Dependency for building distributable components (Jar file)
     OEAntJar("com/progress/openedge:oeant:${oe_build_version}@jar") { changing = true }
 
-    // OELS-specific artifacts for Docker containerization (deployment support files around the Docker image)
+    // Artifacts for Docker containerization (deployment support files around the Docker image)
     // Expected: com/progress/openedge/oels/<api_version>/oels-<api_version>-docker-support.zip
     dockerSupport("com/progress/openedge:oels:${apiVersion}:docker-support@zip") { changing = true }
+}
+
+// Looks for a string in a text file, returns true when found
+Boolean grepInFile(String fileName, String testString){
+    String[] lines = file(fileName) as String[]
+
+    for (line in lines) {
+        if (line ==~ testString) {
+            return true
+        }
+    }
+
+    return false
 }
 
 task echoCurrentBranch {
@@ -491,6 +520,10 @@ task extractOpenEdge(type: Copy) {
     includeEmptyDirs = false
 
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+    doLast {
+        logger.quiet("Extracted OpenEdge Version: ${file("${abl.dlcHome}/version").text.trim()}")
+    }
 }
 // Only unzip if DLC is in the project
 extractOpenEdge.onlyIf { (dlcInProject) }
@@ -511,7 +544,7 @@ task extractLicense(type: Copy){
 // Only unzip if DLC is in the project
 extractLicense.onlyIf { (dlcInProject) }
 
-// extract the zipfiles into our local DLC
+// Extract the zipfiles into our local DLC
 task extractPerl(type: Copy) {
     outputs.dir("${abl.dlcHome}/perl")
 
@@ -573,6 +606,10 @@ task extractSources() {
     }
 }
 
+//****************************************
+//**  PROJECT DEPENDENCIES AND CONFIGS  **
+//****************************************
+
 task ResolveOpenEdgeDependencies(){
     dependsOn checkMixedWhitespace
     dependsOn extractOpenEdge
@@ -591,11 +628,10 @@ task ResolveOpenEdgeDependencies(){
 task CreateManifest(type: ABLRun){
     dependsOn ResolveOpenEdgeDependencies
 
-    File manifest = file("$buildDir/MANIFEST.OE")
-    outputs.file(manifest)
+    outputs.file(manifestFile)
 
     procedure = "bitness.p"
-    wrkDir    = "$buildDir"
+    wrkDir    = buildDir.path
     propath   = files(mainResourcePath)
     arguments = [
         debugPCT: dbgProp,
@@ -605,16 +641,16 @@ task CreateManifest(type: ABLRun){
     ]
 
     doLast {
-        manifest.write( "Implementation-Vendor  : Progress Software Corporation\n")
-        manifest.append("Implementation-Version : ${oe_build_version}\n")
-        manifest.append("Package-Type           : \${packageType}\n") // Escaped to keep the ${} in the file, used for copy(expand) later.
-        manifest.append("Project-Name           : ${projectName}\n")
-        manifest.append("Build-Date             : " + OffsetDateTime.now(ZoneOffset.UTC).format("yyyy-MM-dd'T'HH:mm:ss.SSSX") + "\n")
-        manifest.append("Build-OS               : " + System.getProperty("os.name") + " " + System.getProperty("os.arch") + " " + System.getProperty("os.version") + "\n")
-        manifest.append("Build-JDK              : " + System.getProperty("java.version") + " " + System.getProperty("java.vendor") + " " + System.getProperty("java.vm.version") + "\n")
-        manifest.append("Build-Version          : ${versioning.info.full}\n")
-        manifest.append("DLC-Version            : ${abl.openedgeVersion}\n")
-        manifest.append("DLC-Bitness            : ${ant.bitness}\n")
+        manifestFile.write( "Implementation-Vendor  : Progress Software Corporation\n")
+        manifestFile.append("Implementation-Version : ${oe_build_version}\n")
+        manifestFile.append("Package-Type           : \${packageType}\n") // Escaped to keep the ${} in the file, used for copy(expand) later.
+        manifestFile.append("Project-Name           : ${projectName}\n")
+        manifestFile.append("Build-Date             : " + OffsetDateTime.now(ZoneOffset.UTC).format("yyyy-MM-dd'T'HH:mm:ss.SSSX") + "\n")
+        manifestFile.append("Build-OS               : " + System.getProperty("os.name") + " " + System.getProperty("os.arch") + " " + System.getProperty("os.version") + "\n")
+        manifestFile.append("Build-JDK              : " + System.getProperty("java.version") + " " + System.getProperty("java.vendor") + " " + System.getProperty("java.vm.version") + "\n")
+        manifestFile.append("Build-Version          : ${versioning.info.full}\n")
+        manifestFile.append("DLC-Version            : ${abl.openedgeVersion}\n")
+        manifestFile.append("DLC-Bitness            : ${ant.bitness}\n")
     }
 }
 
@@ -634,31 +670,31 @@ task createPF(type: Copy) {
     String compilerParams = configuredCompilerOpts ? "-compileroptionsfile \"${compilerOptsPath}\"" : "# No Compiler Options"
 
     // this "into"'s are relative to the main "into" below
-    from("$mainResourcePath") {
+    from(mainResourcePath) {
         into "main"
         include("*.pf")
-        expand(buildDir:          "$buildDir",
-               dlcHome:           "${file(abl.dlcHome).absolutePath}",
-               packageType:       "$packageType",
-               projectDir:        projectDir,
-               startupParams:     params,
-               compilerParams:    compilerParams)
+        expand(buildDir:       buildDir,
+               dlcHome:        "${file(abl.dlcHome).absolutePath}",
+               packageType:    packageType,
+               projectDir:     projectDir,
+               startupParams:  params,
+               compilerParams: compilerParams)
     }
-    from("$testResourcePath") {
+    from(testResourcePath) {
         into "test"
         include("*.config")
     }
-    from("$testResourcePath") {
+    from(testResourcePath) {
         into "test"
         include("*.pf")
-        expand(buildDir:          "$buildDir",
-               dlcHome:           "${file(abl.dlcHome).absolutePath}",
-               packageType:       "$packageType",
-               projectDir:        projectDir,
-               startupParams:     params,
-               compilerParams:    compilerParams)
+        expand(buildDir:       buildDir,
+               dlcHome:        "${file(abl.dlcHome).absolutePath}",
+               packageType:    packageType,
+               projectDir:     projectDir,
+               startupParams:  params,
+               compilerParams: compilerParams)
     }
-    into "$resourcesDir"
+    into resourcesDir
     dirPermissions {
         unix("rwxrwxr-x")
     }
@@ -697,6 +733,10 @@ task createPF(type: Copy) {
     }
 }
 
+//****************************************
+//**  DATABASE CREATE/CONNECT TASK(S)   **
+//****************************************
+
 // Create the database necessary ONLY for the application compilation
 task CreateLocalDB(type: CreateDB){
     dependsOn ResolveOpenEdgeDependencies
@@ -726,6 +766,10 @@ task ConnectLocalDB(type: DBConnection) {
     onlyIf { useDatabase }
 }
 
+//****************************************
+//**  PROJECT CODE COMPILATION TASK(S)  **
+//****************************************
+
 // This task compiles all the source code
 task compileCode(type: ABLCompile) {
     dependsOn ResolveOpenEdgeDependencies
@@ -736,7 +780,7 @@ task compileCode(type: ABLCompile) {
 
     doNotTrackState("Always compile application code")
 
-    outputs.dir(abl.rcodeDir)
+    outputs.dir(rcodeOutDir)
 
     avmOptions {
         parameterFile = file("$resourcesDir/main/build.pf").absolutePath
@@ -751,11 +795,14 @@ task compileCode(type: ABLCompile) {
     if (useDatabase) {
         dbConnectionReferenceId(appDatabaseName)
     }
-    wrkDir = abl.rcodeDir
+    rcodeDir = rcodeOutDir.path
     source(ablSourcePath)
     include("**/*.cls")
     include("**/*.p")
-    propath = files(ablSourcePath, libSrcPaths)
+
+    // Compilation requires the source code at hand plus any external libraries
+    propath = files(ablSourcePath,
+                    libSrcPaths)
 }
 
 // This task compiles any programs for schema loading
@@ -774,11 +821,15 @@ task compileSchema(type: ABLCompile) {
         preprocess.enabled = false
     }
 
-    rcodeDir = "$schemaOutDir"
+    rcodeDir = schemaOutDir.path
     source("$schemaPath/encrypted")
     include("*.p")
     propath = files("$schemaPath/encrypted")
 }
+
+//****************************************
+//**   RCODE/SOURCE PACKAGING TASK(S)   **
+//****************************************
 
 // This task creates the rcode procedure library along with the manifest file
 task packageRCode(type: PL){
@@ -786,23 +837,25 @@ task packageRCode(type: PL){
     dependsOn compileSchema
     dependsOn CreateManifest
 
-    inputs.dir(abl.rcodeDir)
+    inputs.dir(rcodeOutDir)
     plFile = "$distributionDir/${classPackageName}.pl"
     outputs.file(plFile)
 
     codepage = "undefined"
-    from("${abl.rcodeDir}")
+    from(rcodeOutDir.path)
 
-    // Be specific that we want all r-code files from our compiled code location
+    // The compiler adds r-code for classes that aren't part of this package,
+    // so we need to be explicit about what we include in the final archive.
     include("OpenEdge/**",
             "*.r",
             "MANIFEST.OE")
 
     doFirst {
+        // Add any non-ABL files to the folder from which the PL is created
         // Create the MANIFEST for the PL using expanded properties
         copy {
-            from "$buildDir/MANIFEST.OE"
-            into abl.rcodeDir
+            from manifestFile
+            into rcodeOutDir
             expand(packageType: packageType)
         }
     }
@@ -812,19 +865,19 @@ task packageRCode(type: PL){
 task packageProtectedCode(type: APL) {
     dependsOn compileCode
 
-    inputs.dir(abl.rcodeDir)
-    from("${abl.rcodeDir}")
-    archiveBaseName = "${classPackageName}"
+    inputs.dir(rcodeOutDir)
+    from(rcodeOutDir)
+    archiveBaseName = classPackageName
     destinationDirectory = distributionDir
     outputs.file(archiveFile)
 
     doFirst {
         // Delete any existing manifest file as this task will create its own.
-        delete "${abl.rcodeDir}/MANIFEST.OE"
+        delete "${rcodeOutDir}/MANIFEST.OE"
     }
 
     manifest {
-        attributes.put AttributeKeys.ImplementationTitle, "Test Suite"
+        attributes.put AttributeKeys.ImplementationTitle, "Load Suite"
         attributes.put AttributeKeys.ImplementationVendor, "Progress Software Corporation"
         attributes.put AttributeKeys.ImplementationVersion, "${oe_build_version}"
         attributes.put AttributeKeys.ComponentName, "${classPackageName}"
@@ -839,15 +892,13 @@ task packageProtectedCode(type: APL) {
 
 // Package the application code as a zip file
 task packageAblApp(type: Zip) {
-    inputs.dir(abl.rcodeDir)
-
-    // archiveFile is the destDir + archive name. See https://docs.gradle.org/current/dsl/org.gradle.api.tasks.bundling.Zip.html
+    inputs.dir(rcodeOutDir)
     outputs.file(archiveFile)
 
     destinationDirectory = distributionDir
 
-    archiveBaseName   = "${classPackageName}"
-    archiveExtension  = "zip"
+    archiveBaseName  = classPackageName
+    archiveExtension = "zip"
 
     from(abl.rcodeDir)
 }
@@ -869,6 +920,88 @@ task packageCode(){
 
     // For OE 12.7 we must package a new .apl archive
     packageProtectedCode.mustRunAfter packageRCode
+}
+
+task packagePreprocessedSource(type: Zip) {
+    dependsOn compileCode
+    dependsOn compileSchema
+    dependsOn CreateManifest
+
+    inputs.dir(preprocessOutDir)
+    outputs.file(archiveFile)
+
+    destinationDirectory = distributionDir
+
+    archiveBaseName   = classPackageName
+    archiveClassifier = "preprocess"
+    archiveExtension  = "zip"
+
+    from(preprocessOutDir)
+
+    doFirst {
+        copy {
+            from manifestFile
+            into preprocessOutDir
+            expand(packageType: "preprocessed-sources")
+        }
+    }
+}
+
+//*****************************************
+//* UNIT TEST COMPILE & EXECUTION TASK(S) *
+//*****************************************
+
+// Creates a JSON config file for ABLUnit
+def writeTestJsonConfig(Map opts, FileTree testFiles, File cfgFile) {
+    if (opts == null) {opts = [:]}
+
+    def generator = new JsonGenerator.Options()
+        .excludeNulls()
+        .addConverter(File)     { it.path }
+        .addConverter(FileTree) { FileTree ft, String key ->
+            ArrayList tests = new ArrayList()
+            if (key == "tests") {
+                ft.getFiles().each {
+                    Map testConfig = [test: it]
+                    if (opts.get("testCase")) {
+                        testConfig.cases = [opts.get("testCase")]
+                    }
+                    tests.add(testConfig)
+                }
+            }
+            tests
+        }
+        .build()
+
+    JsonBuilder builder = new JsonBuilder(generator)
+    builder{
+        options {
+                output {
+                    location (opts.containsKey("outputLocation") ? opts.get("outputLocation") : testsDir)
+                    writers {
+                        ablunit {
+                            fileName "results"
+                        }
+                        junit {
+                            fileName "junit-results"
+                        }
+                    }
+                }
+                quitOnEnd        (opts.containsKey("quitOnEnd") ? opts.get("quitOnEnd") : false)
+                showErrorMessage (opts.containsKey("showErrorMessage") ? opts.get("showErrorMessage") : false)
+                throwError       (opts.containsKey("throwError") ? opts.get("throwError") : true)
+                writeLog         (opts.containsKey("writeLog") ? opts.get("writeLog") : true)
+                xref {
+                    useXref         true            // always use the prebuilt xrefs
+                    xrefLocation    opts.get("xrefLocation")
+                    xrefExtension   opts.get("xrefExt")
+                    xrefThrowError  opts.get("xrefThrowError")
+                }
+        }
+        tests  testFiles
+    }
+
+    cfgFile.text = builder.toPrettyString()
 }
 
 // This task compiles the TEST code to verify there are no compiler errors
@@ -897,48 +1030,188 @@ task compileTest(type: ABLCompile) {
     if (useDatabase) {
         dbConnectionReferenceId(appDatabaseName)
     }
-    rcodeDir = "$testsDir"
+    rcodeDir = testsDir.path
     source(testSourcePath)
     include("**/*.cls")
     include("**/*.p")
-    propath = files(testSourcePath,                         // test sources to compile
+    propath = files(testSourcePath,                             // test sources to compile
                     "$distributionDir/${classPackageName}.apl", // packaged application APL
-                    ablSourcePath,                          // application source (for includes)
-                    configurations.test)                    // corelib/netlib/ablunit r-code
+                    ablSourcePath,                              // application source (for includes)
+                    configurations.test)                        // corelib/netlib/ablunit r-code
+}
+
+// This task creates a zip of the debug listings
+task packageDebugListings(type: Zip) {
+    dependsOn compileCode
+    dependsOn compileTest
+    dependsOn CreateManifest
+
+    inputs.dir(preprocessOutDir)
+    outputs.file(archiveFile)
+
+    destinationDirectory = distributionDir
+
+    archiveBaseName   = classPackageName
+    archiveClassifier = "listings"
+    archiveExtension  = "zip"
+
+    from(listingOutDir)
+
+    doFirst {
+        // Create the MANIFEST for the PL using expanded properties
+        copy {
+            from manifestFile
+            into listingOutDir
+            expand(packageType: "debug-listings")
+        }
+    }
+}
+
+// Create a schema.zip file of all schema and database load scripts
+task packageSchema(type: Zip) {
+    outputs.file(archiveFile)
+
+    destinationDirectory = distributionDir
+
+    archiveBaseName  = "schema"
+    archiveExtension = "zip"
+
+    from(schemaPath) {
+        include(["*.df", "*.st"])
+    }
+    from("$schemaPath/encrypted") {
+        include(["*.p"])
+    }
+    from(schemaOutDir) {
+        include(["*.r"])
+    }
+}
+
+// Generic method to create an HTML report from JUnit XML (junit-results.xml from JUnitXmlWriter).
+// The JUnitXmlWriter already produces standards-compliant XML with all required attributes
+// (timestamp, hostname, package, system-out, system-err), so no transformations are needed.
+def generateAblTestReport(File testDir, String projectName, File reportDir, File tempDir, boolean showReport) {
+    try {
+        def originalXml = file("${testDir}/junit-results.xml")
+        if (!originalXml.exists()) {
+            logger.warn("No junit-results.xml found in ${testDir}, skipping report generation")
+            return
+        }
+
+        def tempJunitDir = file("${tempDir}/junit-${projectName}")
+        tempJunitDir.mkdirs()
+        reportDir.mkdirs()
+
+        // Parse JUnit XML
+        def parser = new XmlParser()
+        def testsuites = parser.parse(originalXml)
+        
+        // Split <testsuites> into individual TEST-*.xml files for ant.junitreport
+        testsuites.testsuite.each { suite ->
+            def classname = suite.attribute('classname') ?: suite.attribute('name')
+            if (!classname || classname.toString().trim().isEmpty()) {
+                logger.warn("Skipping test suite with missing or empty classname/name attribute")
+                return
+            }
+            
+            // Sanitize classname for use in filename (replace invalid Windows path characters)
+            def sanitizedName = classname.toString().replaceAll('[<>:"/\\\\|?*]', '_')
+            
+            // Write individual TEST-ClassName.xml file (no transformations - already compliant)
+            def testFile = new File(tempJunitDir, "TEST-${sanitizedName}.xml")
+            testFile.withWriter('UTF-8') { writer ->
+                writer << '<?xml version="1.0" encoding="UTF-8" ?>\n'
+                new XmlNodePrinter(new PrintWriter(writer)).print(suite)
+            }
+        }
+
+        ant.junitreport(todir: tempJunitDir) {
+            fileset(dir: tempJunitDir, includes: "TEST-*.xml")
+            report(format: "noframes", todir: reportDir) {
+                param(name: "TITLE", expression: "Test Results: ${projectName}")
+            }
+        }
+
+        // Rename the generated HTML report with project-specific name
+        def oldHtml = file("${reportDir}/junit-noframes.html")
+        def newHtml = file("${reportDir}/${projectName}-results.html")
+        if (oldHtml.exists()) {
+            if (newHtml.exists()) { newHtml.delete() }
+            oldHtml.renameTo(newHtml)
+        }
+
+        logger.quiet("Generated test report: ${newHtml}")
+
+        if (showReport) {
+            if (newHtml.exists()) {
+                java.awt.Desktop.desktop.browse(newHtml.toURI())
+            }
+        }
+    } catch (Exception e) {
+        // Don't fail the build if HTML report generation fails - the XML results are what matter
+        logger.error("Failed to generate HTML test report for ${projectName}: ${e.message}")
+        logger.error("Test results are still available in: ${testDir}/results.xml")
+    }
+}
+
+// Create HTML test report from ABLUnit results
+task ablTestReport(){
+    doFirst {
+        // Register Ant's junitreport task using the antJunit library
+        ant.taskdef(name: 'junitreport',
+                    classname: 'org.apache.tools.ant.taskdefs.optional.junit.XMLResultAggregator',
+                    classpath: configurations.antJunit.asPath)
+    }
+
+    doLast {
+        generateAblTestReport(testsDir, "oels", reportsDir, avmTempDir, dlcType == "nt64" && gradle.taskGraph.hasTask(local))
+    }
 }
 
 // This task executes the tests against the built Procedure Library.
 // We call ABLUnitCore.p manually since we want to build the JSON config ourselves.
 task ablTest(type: ABLRun) {
-    // Force task to always be skipped.
-    onlyIf { false }
-
     dependsOn compileTest
-    if (useDatabase) {
+    if (useDatabase && ablTestType == "db") {
         dependsOn ConnectLocalDB
     }
+
+    onlyIf { ablTestType == "lang" || ablTestType == "db" }
+
+    // Ensure HTML report is generated after tests complete (even if tests fail).
+    finalizedBy ablTestReport
+
+    // Note: Pattern for locating test results is "build/**/tests/results.xml",
+    // thus any subdirectories must preceed a /tests/ folder.
 
     inputs.dir(testsDir)
     outputs.file("$testsDir/results.xml")
 
     File jsonConfig = file("$testsDir/ablunit.json")
 
-    // This fails in "configuration" because the various folders aren't yet created
+    // Execute first at runtime not during configuration, as the various folders aren't yet created
     doFirst {
-        File profTemp = file("$buildDir/temp/profiler")
+        File profTemp = file("$avmTempDir/profiler")
         profTemp.mkdirs()
 
         File logsDir = file("$testsDir/logs")
         logsDir.mkdirs()
 
         // Creates the JSON file with test programs to run, skipping anything which is un-runnable via command line
+        List<String> suiteInclude = []
+        List<String> suiteExclude = ["Mock/**"]
+
+        // Include all compiled test files
+        suiteInclude = ["**/*.r"]
+
         writeTestJsonConfig([ outputLocation : testsDir,
                               xrefLocation   : testsDir,
-                              xrefExt        : "xref"
+                              xrefExt        : "xref",
+                              testCase       : ablTestCase
                             ],
                             fileTree(testsDir).matching{
-                                include("${ablTestFilter}")
-                                exclude(ablTestExclusions)
+                                include(suiteInclude)
+                                exclude(suiteExclude)
                             },
                             jsonConfig)
     }
@@ -966,11 +1239,11 @@ task ablTest(type: ABLRun) {
     wrkDir     = testsDir
     procedure  = "ABLUnitCore.p"
 
-    propath = files("$testsDir",                           // unit test rcode
+    propath = files(testsDir,                                   // unit test rcode
                     "$distributionDir/${classPackageName}.apl", // project rcode being tested
-                    testSourcePath,                        // for other non-code artifacts needed by the tests
-                    testResourcePath,                      // pick up runtime config files like logging.config
-                    configurations.test)                   // other dependencies
+                    testSourcePath,                             // for other non-code artifacts needed by the tests
+                    testResourcePath,                           // pick up runtime config files like logging.config
+                    configurations.test)                        // other dependencies
 
     doLast {
         if (!file("$testsDir/results.xml").exists()) {
@@ -979,18 +1252,23 @@ task ablTest(type: ABLRun) {
         File resultsFile = file("$testsDir/results.xml")
         def document = javax.xml.parsers.DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(resultsFile)
         def results = document.documentElement
-        String relPath = file(projectDir).relativePath(file("$testsDir/results.xml"))
+        String relPath = file(projectDir).relativePath(resultsFile)
         logger.quiet("$relPath: tests=${results.getAttribute('tests')}; errors=${results.getAttribute('errors')}; failures=${results.getAttribute('failures')}; skipped=${results.getAttribute('skipped')}")
 
+        // Copy profiler output files to distribution directory with standardized names.
+        // Map format: ["file-extension": "desired-output-filename"]
         def renameMap = [
             "oemp": "TestMemory.oemp",
             "prof": "TestPerformance.prof"
         ]
 
+        // Iterate over each map entry: ext = file extension to find, newName = target filename
         renameMap.each { ext, newName ->
+            // Search test directory for any file matching the extension pattern (e.g., "*.oemp", "*.prof")
             def matchingFile = testsDir.listFiles().find { it.name ==~ /.*\.${ext}$/ }
 
             if (matchingFile) {
+                // Copy the found file to distribution directory and rename it to the standardized name
                 copy {
                     from matchingFile
                     into distributionDir
@@ -1004,116 +1282,9 @@ task ablTest(type: ABLRun) {
     }
 }
 
-// This task creates the source pl file
-task packageDebugListings(type: Zip) {
-    dependsOn compileCode
-    dependsOn compileTest
-    dependsOn CreateManifest
-
-    inputs.dir(preprocessOutDir)
-
-    // archiveFile is the destDir + archive name. See https://docs.gradle.org/current/dsl/org.gradle.api.tasks.bundling.Zip.html
-    outputs.file(archiveFile)
-
-    destinationDirectory = distributionDir
-
-    archiveBaseName   = "${classPackageName}"
-    archiveClassifier = "listings"
-    archiveExtension  = "zip"
-
-    from(listingOutDir)
-
-    doFirst {
-        // Create the MANIFEST for the PL using expanded properties
-        copy {
-            from file("$buildDir/MANIFEST.OE")
-            into listingOutDir
-            expand(packageType: "debug-listings")
-        }
-    }
-}
-
-task packagePreprocessedSource(type: Zip) {
-    dependsOn compileCode
-    dependsOn compileSchema
-    dependsOn CreateManifest
-
-    inputs.dir(preprocessOutDir)
-    // archiveFile is the destDir + archive name. See https://docs.gradle.org/current/dsl/org.gradle.api.tasks.bundling.Zip.html
-    outputs.file(archiveFile)
-
-    destinationDirectory = distributionDir
-
-    archiveBaseName   = "${classPackageName}"
-    archiveClassifier = "preprocess"
-    archiveExtension  = "zip"
-
-    from(preprocessOutDir)
-
-    doFirst {
-        copy {
-            from  file("$buildDir/MANIFEST.OE")
-            into preprocessOutDir
-            expand(packageType: "preprocessed-sources")
-        }
-    }
-}
-
-// Creates a JSON config file for ABLUnit
-def writeTestJsonConfig(Map opts, FileTree testFiles, File cfgFile) {
-    if (opts == null) {opts = [:]}
-
-    def generator = new JsonGenerator.Options()
-        .excludeNulls()
-        .addConverter(File)     { it.path }
-        .addConverter(FileTree) { FileTree ft, String key ->
-            ArrayList tests = new ArrayList()
-            if (key == "tests") {
-                ft.getFiles().each {
-                    tests.add([test: it])
-                }
-            }
-            tests
-        }
-        .build()
-
-    JsonBuilder builder = new JsonBuilder(generator)
-    builder{
-        options {
-                output {
-                    location (opts.containsKey("outputLocation") ? opts.get("outputLocation") : testsDir)
-                    fileName "results"
-                    format   "xml"
-                }
-                throwError       (opts.containsKey("throwError") ? opts.get("throwError") : true)
-                showErrorMessage (opts.containsKey("showErrorMessage") ? opts.get("showErrorMessage") : false)
-                writeLog         opts.get("writeLog")
-                quitOnEnd        opts.get("quitOnEnd")
-                xref {
-                    useXref         true            // always use the prebuilt xrefs
-                    xrefLocation    opts.get("xrefLocation")
-                    xrefExtension   opts.get("xrefExt")
-                    xrefThrowError  opts.get("xrefThrowError")
-                }
-        }
-        tests  testFiles
-    }
-
-    cfgFile.text = builder.toString()
-}
-
-// Looks for a string in a text file, returns true when found
-Boolean grepInFile(String fileName, String testString){
-    String[] lines = file(fileName) as String[]
-
-    for (line in lines) {
-        if (line ==~ testString) {
-            return true
-        }
-    }
-
-    return false
-}
+//*****************************************
+//**  DISTRIBUTION ARTIFACT VALIDATIONS  **
+//*****************************************
 
 // Verifies that the archives generated have the correct manifest, and that the PLs are using the UNDEFINED codepage
 // We test for:
@@ -1156,7 +1327,7 @@ task checkDist(){
         // Get the manifest from the APL, test for expected strings
         copy {
             from zipTree(packageProtectedCode.archiveFile)
-            into "$libExtract"
+            into libExtract
         }
         if (!file("$libExtract/META-INF/MANIFEST.MF").exists()) {
             throw new GradleException("Protected manifest not found")
@@ -1178,8 +1349,8 @@ task checkDist(){
 
         // Get the manifest from the PL, test for expected strings
         ant.exec(executable: prolibExe,
-                 output: "$buildDir/prolib_rcode.log",
-                 dir: "$libExtract") {
+                 output: "$libExtract/prolib_rcode.log",
+                 dir: libExtract) {
             ant.env(key: "DLC", value: absDLC)
             ant.arg(line: "${packageRCode.plFile} -nowarn -yank MANIFEST.OE")
         }
@@ -1210,7 +1381,7 @@ task checkDist(){
             from zipTree(packagePreprocessedSource.archiveFile)
             include "MANIFEST.OE"
             includeEmptyDirs = false
-            into "$libExtract"
+            into libExtract
         }
         if (!file("$libExtract/MANIFEST.OE").exists()) {
             throw new GradleException("Preprocessed code manifest not found")
@@ -1231,73 +1402,53 @@ task checkDist(){
     }
 }
 
+//*****************************************
+//*****    BUILD PREPARATION TASKS    *****
+//*****************************************
+
+task cleanDatabase(type: Delete) {
+    // States that task must always be run regardless of whether Gradle wants to or not
+    doNotTrackState("Clean operation does not have outputs, always run")
+
+    delete databaseDir
+}
+
 // Cleans the "ABL output" of the build script. Keeps the dependencies in build/DLC and build/lib
 // Intended for developer use, to allow clean builds without having to extract the DLC and PL dependencies each time
 task cleanBuildOutput(type: Delete) {
     // States that task must always be run regardless of whether Gradle wants to or not
     doNotTrackState("Clean operation does not have outputs, always run")
 
-    delete "$buildDir/MANIFEST.OE",
-           "$buildDir/rcode",
+    // Clean common items for the project
+    delete manifestFile,
            ablLibs,
            buildSourceDir,
-           databaseDir,
            distributionDir,
            installerDir,
            listingOutDir,
            preprocessOutDir,
+           rcodeOutDir,
            resourcesDir,
            testsDir,
            xrefOutDir,
            // clean the contents of the temp dir, but not the folder itself
-           fileTree("$buildDir/temp") {include "**/*"},
+           fileTree(avmTempDir) {include "**/*"},
            // profiler output from ABL task execution (PCT/OEDF side-effect)
-           "$buildDir/profiler",
+           profilerOutDir,
            // Gradle test/check reports
-           "$buildDir/reports",
+           reportsDir,
            // any logs and OUT files in the build root too
-           fileTree("$buildDir") {include "*.log", "*.out" }
-}
-
-// Clean up the build directory for the UI
-task cleanUIOutput(type: Delete) {
-    doNotTrackState("Always clean UI output when requested")
-
-    delete "${webSourcePath}/build"
-    delete "${webSourcePath}/dist"
-    delete "${webSourcePath}/html"
-    delete "${webSourcePath}/coverage"
-}
-
-// Create a schema.zip file of all schema and database load scripts
-task packageSchema(type: Zip) {
-    // archiveFile is the destDir + archive name. See https://docs.gradle.org/current/dsl/org.gradle.api.tasks.bundling.Zip.html
-    outputs.file(archiveFile)
-
-    destinationDirectory = distributionDir
-
-    archiveBaseName   = "schema"
-    archiveExtension  = "zip"
-
-    from("${schemaPath}") {
-        include(["*.df", "*.st"])
-    }
-}
-
-task addTestExclusions {
-    doLast {
-        println "Updated ABLUnit Test Exclusions: $ablTestExclusions"
-    }
+           fileTree(buildDir) {include "*.log", "*.out" },
+           file("$buildDir/tmp")
 }
 
 // Recompiles and packages ABL-related code only, skipping the UI build and packaging
 task recompile() {
-    dependsOn cleanBuildOutput, packageCode, addTestExclusions, ablTest, packageSchema
+    dependsOn cleanBuildOutput, packageCode, packageSchema, ablTest
 
     packageCode.mustRunAfter cleanBuildOutput
-    addTestExclusions.mustRunAfter packageCode
-    ablTest.mustRunAfter addTestExclusions
     packageSchema.mustRunAfter packageCode
+    ablTest.mustRunAfter packageCode
 }
 
 // Quick recompile focused on building and packaging only (fully skip testing)
@@ -1327,6 +1478,7 @@ task tailorContents(type: Copy) {
         if (!primaryArchive.exists()) {
             throw new GradleException("Primary webapp archive not found: ${primaryArchive.path}")
         }
+
         File monitorArchive = file("${oearMonitorWebAppDir}/${oearMonitorWebAppName}.zip")
         if (!monitorArchive.exists()) {
             throw new GradleException("Monitor webapp archive not found: ${monitorArchive.path}")
@@ -1371,14 +1523,18 @@ task tailorContents(type: Copy) {
     }
 
     // Package a copy of the database schema for deployment.
-    from("${schemaPath}") {
+    from(schemaPath) {
         include(["*.df", "*.st"])
         into("${oearPrimaryAblAppName}/tlr/schema")
     }
 
     // Package a copy of the schema loader for deployment.
-    from("${schemaOutDir}") {
+    from(schemaOutDir) {
         include(["*.r"])
+        into("${oearPrimaryAblAppName}/tlr/schema")
+    }
+    from("$schemaPath/encrypted") {
+        include(["*.p"])
         into("${oearPrimaryAblAppName}/tlr/schema")
     }
 }
@@ -1386,7 +1542,7 @@ task tailorContents(type: Copy) {
 // Create the ABLApp for the main application's API's as an OEAR bundle
 // See: https://docs.progress.com/bundle/pas-for-openedge-management/page/OpenEdge-Application-Archive-Structure.html
 // Based on https://github.bedford.progress.com/openedge/teamcity-history/blob/a7648109cd4215a7f453d3e118841c9e37cf84c9/build.gradle
-task createMainOEAR {
+task createPrimaryOEAR {
     inputs.dir(oearPrimaryAblAppBuildDir)
 
     File resources = oearPrimaryAblAppBuildDir
@@ -1452,14 +1608,14 @@ task createMonitorOEAR {
 // Copy generated OEAR archives into the distribution folder.
 task exportOEAR(type: Copy) {
     dependsOn tailorContents
-    dependsOn createMainOEAR, createMonitorOEAR
+    dependsOn createPrimaryOEAR, createMonitorOEAR
 
     mustRunAfter checkDist
 
     inputs.dir(pasoeBuildDir)
 
-    createMainOEAR.mustRunAfter tailorContents
-    createMonitorOEAR.mustRunAfter createMainOEAR
+    createPrimaryOEAR.mustRunAfter tailorContents
+    createMonitorOEAR.mustRunAfter createPrimaryOEAR
 
     from(pasoeBuildDir) {
         include("*.oear")
@@ -1472,22 +1628,23 @@ task createInstaller(type: Zip) {
     dependsOn packageSchema
     dependsOn exportOEAR
 
+    String installSubdir = rootProject.name
+
     inputs.dir("$mainResourcePath/install")
     inputs.files("$distributionDir/${classPackageName}.apl")
 
-    // archiveFile is the destDir + archive name. See https://docs.gradle.org/current/dsl/org.gradle.api.tasks.bundling.Zip.html
     outputs.file(archiveFile)
 
     destinationDirectory = distributionDir
 
     // NOTE: This is named as an unversioned installer file as it will be renamed correctly during the upload to Artifactory.
-    archiveBaseName   = "installer"
-    archiveExtension  = "zip"
+    archiveBaseName  = "installer"
+    archiveExtension = "zip"
 
     // Include the OEAR created in previous steps.
     from(pasoeBuildDir){
         include(["*.oear", "*.zip"])
-        into "${rootProject.name}/ablapps"
+        into "${installSubdir}/ablapps"
     }
 
     // Copy the scripts for the installation process, settting permissions as necessary.
@@ -1502,7 +1659,7 @@ task createInstaller(type: Zip) {
                 }
             }
         }
-        into "${rootProject.name}/bin"
+        into "${installSubdir}/bin"
     }
 
     // Include all installer configuration files and replace embedded version numbers for this release.
@@ -1540,10 +1697,11 @@ task createInstaller(type: Zip) {
                 .replace("\${dbPortMin}", configuredDbPortMin)
                 .replace("\${dbPortMax}", configuredDbPortMax)
                 .replace("\${dbLockWait}", configuredDbLockWait)
+                .replace("\${dbBiGrow}", configuredDbBiGrow)
                 .replace("\${classPackageName}", classPackageName)
                 .replace("\${apiVersion}", apiVersion)
         }
-        into "${rootProject.name}/conf"
+        into "${installSubdir}/conf"
     }
 
     // Include the readme.txt file explicitly.
@@ -1551,13 +1709,13 @@ task createInstaller(type: Zip) {
         filePermissions {
             unix("rw-rw-r--")
         }
-        into "${rootProject.name}"
+        into "${installSubdir}"
     }
 
     // Provide a manifest file with build information.
-    from("$buildDir/MANIFEST.OE"){
+    from(manifestFile){
         expand(packageType: "installer")
-        into "${rootProject.name}"
+        into "${installSubdir}"
     }
 }
 
@@ -1591,8 +1749,8 @@ task packageDocker(type: Zip) {
 
     destinationDirectory = distributionDir
 
-    archiveBaseName   = "docker-support"
-    archiveExtension  = "zip"
+    archiveBaseName  = "docker-support"
+    archiveExtension = "zip"
 
     from("$mainResourcePath/docker")
 }
@@ -1629,7 +1787,9 @@ task local() {
 // Builds the installer zip while also extracting it to a local directory for easy testing.
 defaultTasks "clean", "packageCode", "ablTest", "packageDebugListings", "checkDist", "packageK6", "packageDocker", "extractInstaller"
 
-/** ***** Docker Container Tasks ***** */
+//*****************************************
+//*****    DOCKER CONTAINER TASKS     *****
+//*****************************************
 
 // Location for extracted components from our dependencies
 File componentsDir = file("$buildDir/components")
@@ -1738,12 +1898,12 @@ task packageOELS(type: Zip) {
     destinationDirectory = distributionDir
 
     // Include the contents of the components folder
-    from("${componentsDir}") {
+    from(componentsDir) {
         include "**/*"
     }
 
     // Include the Docker image created previously
-    from("${buildDir}") {
+    from(buildDir) {
         include dockerLatestArchive
     }
 

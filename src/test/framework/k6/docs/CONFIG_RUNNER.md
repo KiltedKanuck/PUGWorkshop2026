@@ -61,13 +61,13 @@ All config files are JSON. The full schema shape is:
     "AUTH_REQUIRED": true,
     "AUTH_USERNAME_PREFIX": "oels-vu",
     "AUTH_PASSWORD": "password",
-    "AUTH_CONTEXT_PATH": "/loadsuite/static/auth",
+    "AUTH_CONTEXT_PATH": "/devsuite/static/auth",
     "AUTH_LOGIN_ENDPOINT": "",
     "AUTH_LOGOUT_ENDPOINT": "",
     "AUTH_LOGOUT_EACH_ITERATION": false,
     "AUTH_STICKY_SESSIONS": true,
     "AUTH_DEBUG": false,
-    "AUTH_CONTEXT_API_PATH": "/loadsuite/web/api/context",
+    "AUTH_CONTEXT_API_PATH": "/devsuite/web/api/context",
     "AUTH_SESSION_DURATION_SECONDS": 0,
     "ENABLE_FAILURE_DIAGNOSTICS": true,
     "FAILURE_LOG_LIMIT_PER_VU": 0,
@@ -110,13 +110,13 @@ All config files are JSON. The full schema shape is:
 | `AUTH_REQUIRED` | boolean | true | Require per-VU authentication |
 | `AUTH_USERNAME_PREFIX` | string | `oels-vu` | Username built as `<prefix>-<VU_ID>` |
 | `AUTH_PASSWORD` | string | `password` | Password for all VU logins |
-| `AUTH_CONTEXT_PATH` | string | `/loadsuite/static/auth` | Base path for auth endpoints |
+| `AUTH_CONTEXT_PATH` | string | `/devsuite/static/auth` | Base path for auth endpoints |
 | `AUTH_LOGIN_ENDPOINT` | string | derived from context path | Override login endpoint |
 | `AUTH_LOGOUT_ENDPOINT` | string | derived from context path | Override logout endpoint |
 | `AUTH_LOGOUT_EACH_ITERATION` | boolean | false | Logout after every iteration |
 | `AUTH_STICKY_SESSIONS` | boolean | true | Preserve session cookies across iterations |
 | `AUTH_DEBUG` | boolean | false | Emit `[auth]` debug logs |
-| `AUTH_CONTEXT_API_PATH` | string | `/loadsuite/web/api/context` | Base path for the context invalidation API (`/invalidate`, `/check`) |
+| `AUTH_CONTEXT_API_PATH` | string | `/devsuite/web/api/context` | Base path for the context invalidation API (`/invalidate`, `/check`) |
 | `AUTH_SESSION_DURATION_SECONDS` | integer ≥ 0 | 0 | Per-VU session lifetime in seconds; `0` = disabled. When elapsed, the invalidation cycle runs as the full iteration (no scenario work), then re-login occurs on the next iteration |
 | `ENABLE_FAILURE_DIAGNOSTICS` | boolean | true | Enable structured failure event logs (`false` disables diagnostics output) |
 | `FAILURE_LOG_LIMIT_PER_VU` | integer ≥ 0 | 0 | Max failure logs per VU; `0` = unlimited |

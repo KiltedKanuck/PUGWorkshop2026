@@ -1,6 +1,6 @@
 # OpenEdge Load Suite Build Flow
 
-This document describes the [TeamCity project](https://teamcity.bedford.progress.com/project/OpenEdge_DevelopBranchBuilds_OpenEdgeCi_LoadSuite) as users see it in TeamCity and explains how values and artifact names change across build stages.
+This document describes the [TeamCity project](https://teamcity.bedford.progress.com/project/OpenEdge_DevelopBranchBuilds_OpenEdgeCi_DevSuite) as users see it in TeamCity and explains how values and artifact names change across build stages.
 
 ## TeamCity Project Layout
 
@@ -21,7 +21,7 @@ These are defined once at the project root and inherited unless overridden:
 - env.app_api_version = 1.0.0
 - ARTIFACTORY_MAVEN_REPO = oe-maven-develop-bedford
 - env.dlcType = linuxx86_64
-- TOOLNAME = OpenEdge.LoadSuite
+- TOOLNAME = OpenEdge.Workshop
 - COMPONENT = oels
 - env.JAVA_HOME, JAVA_HOME, TC_CHK_PLAT, CURL_EXEC, and related shared values
 
@@ -94,9 +94,9 @@ There are two distinct stages:
     - Example (13.1.0): oe-maven-develop-bedford/com/progress/openedge/oels/1.0.0/oels-13.1.0.zip
 
 - Server-Side Logic Packages
-  - Source File: `build/dist/%TOOLNAME%.zip` (eg. `build/dist/OpenEdge.LoadSuite.zip`)
+  - Source File: `build/dist/%TOOLNAME%.zip` (eg. `build/dist/OpenEdge.Workshop.zip`)
   - Target Path: `%ARTIFACTORY_MAVEN_REPO%/%OE_MAVEN_ORG%/%COMPONENT%/%env.app_api_version%/%TOOLNAME%-%system.build_target_oe_version%-%env.dlcType%.zip`
-    - Example (13.1.0): oe-maven-develop-bedford/com/progress/openedge/oels/1.0.0/OpenEdge.LoadSuite-13.1.0-linuxx86_64.zip
+    - Example (13.1.0): oe-maven-develop-bedford/com/progress/openedge/oels/1.0.0/OpenEdge.Workshop-13.1.0-linuxx86_64.zip
 
 - Docker k6 Client Image
   - Source File: `build/dist/k6client-docker-image.zip`

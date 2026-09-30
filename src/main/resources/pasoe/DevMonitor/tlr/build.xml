@@ -1,0 +1,298 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="OpenEdge ARchive Tailoring" basedir=".">
+
+    <description>
+        Template build file for ABL application deployment tailoring.
+        Added to instance ablapps appname tlr directory.
+        See: https://docs.progress.com/bundle/pas-for-openedge-management/page/Tailor-an-ABLApp-installation-using-Ant.html
+        Order of events for an OEAR import is ablapp_deploy then ablapp_deployed
+    </description>
+
+    <!-- Set environment variables required for the ANT script -->
+    <property environment="env"/>
+    <fail unless="env.DLC" message="Script must be executed within a DLC environment!"/>
+
+    <macrodef name="init_env">
+        <attribute name="target"/>
+        <sequential>
+            <!-- Target entry marker to show exactly when PASOE tailoring invokes each lifecycle hook. -->
+            <echo message="Entering Target: @{target}"/>
+
+            <!-- Derive key paths from environment variables; silently skips if not present -->
+            <condition property="dlcHome" value="${env.DLC}">
+                <isset property="env.DLC"/>
+            </condition>
+            <condition property="catalina.home" value="${env.CATALINA_HOME}">
+                <isset property="env.CATALINA_HOME"/>
+            </condition>
+            <condition property="catalina.base" value="${env.CATALINA_BASE}">
+                <isset property="env.CATALINA_BASE"/>
+            </condition>
+
+            <!-- Derive tcman instance properties; silently skips if not present -->
+            <condition property="tcman.alias" value="${env.tcman_alias}">
+                <isset property="env.tcman_alias"/>
+            </condition>
+            <condition property="tcman.instance.base" value="${env.tcman_instancebase}">
+                <isset property="env.tcman_instancebase"/>
+            </condition>
+            <condition property="tcman.http.port" value="${env.tcman_cfghttpport}">
+                <isset property="env.tcman_cfghttpport"/>
+            </condition>
+            <condition property="tcman.https.port" value="${env.tcman_cfghttpsport}">
+                <isset property="env.tcman_cfghttpsport"/>
+            </condition>
+            <condition property="tcman.shutdown.port" value="${env.tcman_cfgshutport}">
+                <isset property="env.tcman_cfgshutport"/>
+            </condition>
+            <condition property="tcman.debug" value="${env.tcman_debug}">
+                <isset property="env.tcman_debug"/>
+            </condition>
+            <condition property="tcman.sec.model" value="${env.tcman_secmodel}">
+                <isset property="env.tcman_secmodel"/>
+            </condition>
+            <condition property="tcman.type" value="${env.tcman_type}">
+                <isset property="env.tcman_type"/>
+            </condition>
+            <condition property="tcman.verbose" value="${env.tcman_verbose}">
+                <isset property="env.tcman_verbose"/>
+            </condition>
+
+            <!-- Set properties based on OS family. -->
+            <condition property="isWindows">
+                <os family="windows"/>
+            </condition>
+            <condition property="isUnix">
+                <os family="unix"/>
+            </condition>
+
+            <!-- Set PASOE utility paths based on operating system. -->
+            <property name="dlc.bin" value="${dlcHome}${file.separator}bin"/>
+            <condition property="client.exec" value="pro" else="pro.bat">
+                <os family="unix"/>
+            </condition>
+            <condition property="oeprop.name" value="oeprop.sh" else="oeprop.bat">
+                <os family="unix"/>
+            </condition>
+            <condition property="secprop.name" value="secprop.sh" else="secprop.bat">
+                <os family="unix"/>
+            </condition>
+            <property name="secprop.util" value="${catalina.home}${file.separator}bin${file.separator}${secprop.name}"/>
+            <condition property="tcman.name" value="tcman.sh" else="tcman.bat">
+                <os family="unix"/>
+            </condition>
+
+            <!-- Set properties for key locations and files. -->
+            <property name="db.path" value="${catalina.base}${file.separator}db"/>
+            <property name="pas.bin" value="${catalina.base}${file.separator}bin"/>
+            <property name="pas.openedge" value="${catalina.base}${file.separator}openedge"/>
+            <property name="oeprop.util" value="${pas.bin}${file.separator}${oeprop.name}"/>
+            <property name="tcman.util" value="${pas.bin}${file.separator}${tcman.name}"/>
+            <property name="pas.conf.dir" value="${catalina.base}${file.separator}conf"/>
+            <property name="ablapp.tlr.dir" value="${basedir}"/>
+            <property name="ablapp.dir" value="${ablapp.tlr.dir}${file.separator}.."/>
+
+            <!-- Add the appropriate ANT-Contrib library to this environment (v1.0b3 in 12.8+). -->
+            <loadtask resource="net/sf/antcontrib/antcontrib.properties" classfile="${dlcHome}/ant/lib/ant-contrib-1.0b3.jar"/>
+
+            <!-- ant-contrib does not map 'for' in antcontrib.properties. -->
+            <taskdef name="for" classname="net.sf.antcontrib.logic.ForTask" classpath="${dlcHome}/ant/lib/ant-contrib-1.0b3.jar"/>
+
+            <!-- Utilize a local file for properties. Allows this XML to provide defaults only. -->
+            <local name="install.properties.file"/>
+            <property name="install.properties.file" value="${catalina.base}${file.separator}install.properties"/>
+            <local name="install.properties.exists"/>
+            <available file="${install.properties.file}" type="file" property="install.properties.exists"/>
+            <if>
+                <isset property="install.properties.exists"/>
+                <then>
+                    <property file="${install.properties.file}"/>
+
+                    <!-- Report the system resources, if available. -->
+                    <echo message="  System Hostname: ${system.detected.hostname}"/>
+                    <echo message=" System CPU Count: ${system.detected.cpus}"/>
+                    <echo message="Total Memory (MB): ${system.detected.memory}"/>
+                </then>
+                <else>
+                    <echo message="WARNING: install.properties not found at: ${install.properties.file}"/>
+                </else>
+            </if>
+        </sequential>
+    </macrodef>
+
+    <macrodef name="loadtask">
+        <!-- Usage <loadtask resource="_resource_string_" classfile="_path_to_file_"/> -->
+        <attribute name="resource"/>
+        <attribute name="classfile"/>
+
+        <sequential>
+            <local name="task.file.exists"/>
+            <condition property="task.file.exists">
+                <available file="@{classfile}" type="file"/>
+            </condition>
+
+            <taskdef resource="@{resource}" classpath="@{classfile}"/>
+        </sequential>
+    </macrodef>
+
+    <macrodef name="require">
+        <!-- Usage <require file="_path_to_file_"/> -->
+        <attribute name="file"/>
+        <attribute name="message" default="File @{file} not set or missing"/>
+
+        <sequential>
+            <fail message="@{message}">
+                <condition>
+                    <not>
+                        <available file="@{file}" type="file"/>
+                    </not>
+                </condition>
+            </fail>
+        </sequential>
+    </macrodef>
+
+    <macrodef name="hasExistingDir">
+        <!-- Usage <hasExistingDir folder="_path_to_folder_"/> -->
+        <attribute name="folder"/>
+        <attribute name="message" default="Directory @{folder} already exists!"/>
+
+        <sequential>
+            <fail message="@{message}">
+                <condition>
+                    <available file="@{folder}" type="dir"/>
+                </condition>
+            </fail>
+        </sequential>
+    </macrodef>
+
+    <macrodef name="requireDir">
+        <!-- Usage <requireDir folder="_path_to_folder_"/> -->
+        <attribute name="folder"/>
+        <attribute name="message" default="Directory @{folder} not set or missing"/>
+
+        <sequential>
+            <fail message="@{message}">
+                <condition>
+                    <not>
+                        <available file="@{folder}" type="dir"/>
+                    </not>
+                </condition>
+            </fail>
+        </sequential>
+    </macrodef>
+
+    <macrodef name="mergeSecurityProperties">
+        <attribute name="file"/>
+        <attribute name="target"/>
+        <sequential>
+            <!-- Check if the properties file exists and handle accordingly. -->
+            <local name="merge.file.exists"/>
+            <available file="@{file}" property="merge.file.exists"/>
+            <if>
+                <isset property="merge.file.exists"/>
+                <then>
+                    <echo message="Merging security properties '@{file}' to '@{target}'"/>
+                    <exec executable="${secprop.util}" failonerror="true">
+                        <arg value="-f"/>
+                        <arg value="-w"/>
+                        <arg value="@{target}"/>
+                        <arg value="@{file}"/>
+                    </exec>
+                </then>
+                <else>
+                    <echo message="WARNING: File '@{file}' not found. Skipping security properties merge."/>
+                </else>
+            </if>
+        </sequential>
+    </macrodef>
+
+    <target name="ablapp_deploy">
+        <!-- Called when an ABLApp is being prepared to be imported. -->
+    </target>
+
+    <target name="ablapp_deployed">
+        <!-- Called when an ABLApp has finished being imported. -->
+        <init_env target="ablapp_deployed"/>
+
+        <!-- Replace tokens in the ABL Application's config/parameter file(s). -->
+        <echo message="Update tokens for .config and .pf file(s)..."/>
+        <replace dir="${ablapp.dir}${file.separator}openedge">
+            <include name="*.config"/>
+            <include name="*.pf"/>
+            <replacefilter token="@DLCHOME@" value="${dlcHome}"/>
+            <replacefilter token="@DBPATH@" value="${db.path}"/>
+            <replacefilter token="@DBNAME@" value="${application.db.name}"/>
+            <replacefilter token="@DBHOST@" value="${application.db.host.name}"/>
+            <replacefilter token="@DBPORT@" value="${application.db.port.service}"/>
+            <replacefilter token="@MINPORT@" value="${application.db.port.min}"/>
+            <replacefilter token="@MAXPORT@" value="${application.db.port.max}"/>
+            <replacefilter token="@LOCKWAIT@" value="${application.db.lockwait}"/>
+            <replacefilter token="@CODEPAGE@" value="${application.db.codepage}"/>
+            <replacefilter token="@COLLATION@" value="${application.db.collation}"/>
+            <replacefilter token="@DATEFORMAT@" value="${dateformat}"/>
+            <replacefilter token="@NUMSEP@" value="${numsep}"/>
+            <replacefilter token="@NUMDEC@" value="${numdec}"/>
+            <replacefilter token="@HOSTNAME@" value="${system.detected.hostname}"/>
+            <replacefilter token="@PASPATH@" value="${catalina.base}"/>
+            <replacefilter token="@PASALIAS@" value="${tcman.alias}"/>
+            <replacefilter token="@PASHTTP@" value="${tcman.http.port}"/>
+            <replacefilter token="@PASHTTPS@" value="${tcman.https.port}"/>
+            <replacefilter token="@PRIMARY_ABLAPP@" value="${primary.ablapp.name}"/>
+            <replacefilter token="@PRIMARY_WEBAPP@" value="${primary.webapp.name}"/>
+            <replacefilter token="@MONITOR_ABLAPP@" value="${monitor.ablapp.name}"/>
+            <replacefilter token="@MONITOR_WEBAPP@" value="${primary.webapp.name}"/>
+        </replace>
+
+        <!-- Merge the security properties for the webapp of each ABLApp in the PAS instance (by alias). -->
+        <local name="tlr.merge.file"/>
+        <property name="tlr.merge.file" value="${ablapp.tlr.dir}${file.separator}merge.oeablSecurity.properties"/>
+        <local name="tlr.merge.file.exists"/>
+        <available file="${tlr.merge.file}" property="tlr.merge.file.exists"/>
+        <if>
+            <isset property="tlr.merge.file.exists"/>
+            <then>
+                <mergeSecurityProperties file="${tlr.merge.file}"
+                 target="${tcman.alias}.${monitor.ablapp.name}.${monitor.webapp.name}"/>
+            </then>
+        </if>
+
+        <!-- Enable the collection of both count-based and time-based metrics (collectMetrics=3). -->
+        <local name="openedge.props.file"/>
+        <property name="openedge.props.file" value="${catalina.base}${file.separator}conf${file.separator}openedge.properties"/>
+        <local name="openedge.props.exists"/>
+        <available file="${openedge.props.file}" property="openedge.props.exists"/>
+        <if>
+            <isset property="openedge.props.exists"/>
+            <then>
+                <echo message="Forcing collectMetrics=3 in ${openedge.props.file}"/>
+                <replaceregexp file="${openedge.props.file}"
+                               match="(^\s*collectMetrics\s*=\s*)\d+"
+                               replace="\13"
+                               byline="true"/>
+            </then>
+        </if>
+    </target>
+
+    <target name="ablapp_export">
+        <!-- Called when an ABLApp is being prepared to be exported (from its container). -->
+    </target>
+
+    <target name="ablapp_exported">
+        <!-- Called when an ABLApp is finished being exported (from its container). -->
+    </target>
+
+    <!--
+        PASOE tooling currently does not have support for undeploying an ABL application in a single command.
+        However, undeploying a web application that is part of the ABLApp will cause these targets to be called
+        This is done multiple times as each web application that comprises the ABLApp is undeployed:
+    -->
+
+    <target name="ablapp_undeploy">
+        <!-- Called when an ABLApp is being prepared to be undeployed (removed from its container). -->
+    </target>
+
+    <target name="ablapp_undeployed">
+        <!-- Called when an ABLApp is finished being undeployed (removed from its container). -->
+    </target>
+
+</project>

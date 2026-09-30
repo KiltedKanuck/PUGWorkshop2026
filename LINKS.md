@@ -7,8 +7,8 @@ The following links may be used for testing when running either locally or via a
 ### OpenAPI / Swagger:
 
 * Main Application - Contains the test-able endpoints:
-  * http://127.0.0.1:7780/loadsuite/web/api/catalog/openapi
-  * http://127.0.0.1:7780/loadsuite/static/catalog.html
+  * http://127.0.0.1:7780/devsuite/web/api/catalog/openapi
+  * http://127.0.0.1:7780/devsuite/static/catalog.html
 * Montior Application - Reports on the main application:
   * http://127.0.0.1:7780/monitor/web/api/catalog/openapi
   * http://127.0.0.1:7780/monitor/static/catalog.html
@@ -24,15 +24,15 @@ Enablement of the **OpenEdge HealthScanner** is now automatic and will be availa
 
 ### Authentication - Direct HTML Forms
 
-* http://127.0.0.1:7780/loadsuite/static/auth/login.html
-* http://127.0.0.1:7780/loadsuite/static/auth/logout.html
+* http://127.0.0.1:7780/devsuite/static/auth/login.html
+* http://127.0.0.1:7780/devsuite/static/auth/logout.html
 
 #### Authentication - HTTP POST
 
 The login and logout forms post to Spring Security endpoints under the same webapp context:
 
-- Login POST URL: `http://127.0.0.1:7780/loadsuite/static/auth/j_spring_security_check`
-- Logout POST URL: `http://127.0.0.1:7780/loadsuite/static/auth/j_spring_security_logout`
+- Login POST URL: `http://127.0.0.1:7780/devsuite/static/auth/j_spring_security_check`
+- Logout POST URL: `http://127.0.0.1:7780/devsuite/static/auth/j_spring_security_logout`
 - Login form fields: `j_username`, `j_password`
 
 Use a cookie jar (or equivalent session handling) so the authenticated session can be reused for logout or subsequent requests.
@@ -44,11 +44,11 @@ Use a cookie jar (or equivalent session handling) so the authenticated session c
 curl -i -c cookies.txt -X POST \
     -H "Content-Type: application/x-www-form-urlencoded" \
     --data "j_username=<username>&j_password=<password>" \
-    http://127.0.0.1:7780/loadsuite/static/auth/j_spring_security_check
+    http://127.0.0.1:7780/devsuite/static/auth/j_spring_security_check
 
 # Logout (sends same session cookie)
 curl -i -b cookies.txt -X POST \
-    http://127.0.0.1:7780/loadsuite/static/auth/j_spring_security_logout
+    http://127.0.0.1:7780/devsuite/static/auth/j_spring_security_logout
 ```
 
 If your PASOE deployment is configured with CSRF protection, include the CSRF token expected by your login/logout flow.

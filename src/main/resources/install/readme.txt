@@ -47,7 +47,7 @@ reported as part of the usage information and execution of the tasks. Once creat
 following actions will be taken within the new PASOE instance:
 
 - A new OpenEdge Application aRchive (.oear) will be imported into the PASOE instance.
-- Tailoring of the OEAR (LoadSuite) will perform the following significant actions:
+- Tailoring of the OEAR (DevSuite) will perform the following significant actions:
     - Remove the default ROOT webapp and replace with a non-OEABL version which serves
       only static content, redirecting users to the OpenAPI catalog for the application.
     - Generate a new default username and password for Tomcat/OEManager access.
@@ -61,13 +61,13 @@ all of which can be modified post-install via the followng respective files:
 
 PASOE - OELS Instance:
     - `CATALINA_BASE/conf/openedge.properties`  - Standard PASOE configuration file
-    - `CATALINA_BASE/ablapps/LoadSuite/openedge/startup.pf`  - AVM startup params
+    - `CATALINA_BASE/ablapps/DevSuite/openedge/startup.pf`  - AVM startup params
     - `CATALINA_BASE/bin/oels_setenv.[bat|sh]`  - Application environment variables
         - `USE_ORIGINAL_CONTEXT_LOGIC=[true|false]`  - Opt in (true) or out (false) of using customer-specific user context logic
 
 RDBMS - "thrasher" Database:
     - `CATALINA_BASE/bin/dboptions.properties`  - Used by the instance_startup.* scripts
-    - `CATALINA_BASE/ablapps/LoadSuite/openedge/startup.pf`  - DB client params
+    - `CATALINA_BASE/ablapps/DevSuite/openedge/startup.pf`  - DB client params
 
 NOTE: The actual database connecton is controlled via the `sessionStartupProcParam`
 within the `openedge.properties` file. This should ONLY set either the database name

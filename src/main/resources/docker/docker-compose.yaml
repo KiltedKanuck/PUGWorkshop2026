@@ -1,0 +1,42 @@
+# -----
+# ----- OpenEdge Load Suite k6 Client docker compose file -----
+# ----- Company: Progress Software
+# ----- Author: Dustin Grau dugrau@progress.com
+# ----- Date: 2026-05-26
+# -----
+# ----- Usage:
+# -----
+# ----- Interactive shell (for manual testing and exploration):
+# -----   docker compose run --rm --service-ports k6-client sh
+# -----     └─ run         : Execute one-off command in service container
+# -----     └─ --rm        : Remove container after exit (cleanup)
+# -----     └─ --service-ports : Publish ports from this compose service to your host (required for dashboard)
+# -----     └─ k6-client   : Service name defined below in this file
+# -----     └─ sh          : Command to run (opens shell at /opt/k6/tests)
+# -----   
+# -----   Inside container you can:
+# -----     ls                                                    # List available tests and configs
+# -----     ./launchUnifiedScenario.sh configs/smoke-local.json   # Run a test scenario with a specific config
+# -----     cat logs/results-*.json                               # View raw test results output by k6
+# -----     exit                                                  # Leave the container (shuts down the instance if using --rm)
+# -----
+services:
+  k6-client:                                # OELS k6 load testing client container
+    image: oels/k6:latest
+    ports:
+      - "5665:5665"                         # Expose dashboard to host/network using default port 5665
+    volumes:
+      - type: bind                          # Configuration files mount - auto-refreshed from configs.samples on startup
+        source: ./configs
+        target: /opt/k6/tests/configs
+      - type: bind                          # Documentation mount - auto-refreshed from docs.local on startup
+        source: ./docs
+        target: /opt/k6/tests/docs
+      - type: bind                          # Logs mount - k6 test results and other output logs
+        source: ./logs
+        target: /opt/k6/tests/logs
+    cap_drop:                               # Remove specific capabilities from the container, enhancing security
+      - NET_RAW                             # Drop the capability for using low-level network capabilities
+    security_opt:
+      - no-new-privileges:true              # Enforce no-new-privileges to prevent privilege escalation
+    working_dir: /opt/k6/tests              # Start in the tests directory where all scripts are located

@@ -37,6 +37,7 @@
 #application.db.port.min=
 #application.db.port.max=
 #application.db.lockwait=
+#application.db.bi.grow=
 #application.db.codepage=
 #application.db.collation=
 

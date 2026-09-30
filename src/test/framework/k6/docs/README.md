@@ -298,7 +298,7 @@ All fields below go inside the `"env"` object of your config file.
 | `AUTH_REQUIRED` | `true` | Require per-VU authentication before request execution |
 | `AUTH_USERNAME_PREFIX` | `oels-vu` | Per-VU username prefix (format: `<prefix>-<VU_ID>`) |
 | `AUTH_PASSWORD` | `password` | Password used for all VU logins |
-| `AUTH_CONTEXT_PATH` | `/loadsuite/static/auth` | Webapp context path for auth endpoints |
+| `AUTH_CONTEXT_PATH` | `/devsuite/static/auth` | Webapp context path for auth endpoints |
 | `AUTH_LOGIN_ENDPOINT` | _(derived)_ | Login endpoint override |
 | `AUTH_LOGOUT_ENDPOINT` | _(derived)_ | Logout endpoint override |
 | `AUTH_LOGOUT_EACH_ITERATION` | `false` | Log out and clear session after each iteration |

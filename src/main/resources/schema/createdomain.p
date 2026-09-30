@@ -59,7 +59,7 @@ if (cDomainName eq ? or trim(cDomainName) eq "":u) then
     assign cDomainName = "OELS":u.
 
 if (cDomainAccessCode eq ? or trim(cDomainAccessCode) eq "":u) then
-    assign cDomainAccessCode = "LoadSuite":u.
+    assign cDomainAccessCode = "DevSuite":u.
 
 /* Apply changes to all connected databases. */
 do iDB = 1 to num-dbs:

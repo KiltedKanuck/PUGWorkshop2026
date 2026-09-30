@@ -12,7 +12,7 @@ export const DEFAULT_SERVER_URL = 'http://127.0.0.1:7780';
 /**
  * Standard API prefix for all load suite test endpoints.
  */
-export const API_PREFIX = '/loadsuite/web/api';
+export const API_PREFIX = '/devsuite/web/api';
 
 
 /**

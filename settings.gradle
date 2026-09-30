@@ -4,7 +4,16 @@
  * The settings file is used to specify which projects to include in your build.
  *
  * Detailed information about configuring a multi-project build in Gradle can be found
- * in the user manual at https://docs.gradle.org/9.3.0/userguide/multi_project_builds.html
+ * in the user manual at https://docs.gradle.org/current/userguide/userguide.html
+ *
+ * NOTE: When updating the Gradle version in gradle.properties, regenerate the wrapper
+ *       by first obtaining the new distribution by performing a version check, then
+ *       issue the wrapper command with the matching version number:
+ *
+ *   1. gradlew --version
+ *   2. gradlew wrapper --gradle-version=X.Y.Z
+ *
+ * This ensures gradle-wrapper.jar stays in sync with the specified version.
  */
 
 /* Gradle plugins should resolve to the following internally-hosted location:
@@ -35,4 +44,4 @@ pluginManagement {
     }
 }
 
-rootProject.name = 'OpenEdgeLoadSuite'
+rootProject.name = 'OpenEdgeDevSuite'

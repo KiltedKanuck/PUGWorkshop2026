@@ -1,0 +1,33 @@
+{
+  "services": {
+    "default": {
+      "version": "@APIVERSION@",
+      "description": "A very basic default service for whatever you want",
+      "operations": {
+        "/hello": {
+          "POST": {
+            "contentType": "application/json",
+            "description": "Responds with a Hello World example.",
+            "statusCode": 200,
+            "entity": {
+              "name": "OpenEdge.Workshop.Interface.DefaultService",
+              "function": "SayHello",
+              "description": "Say hello to the world",
+              "typeof": "Progress.Lang.Object",
+              "arg": [{
+                "ablName": "pcMessage",
+                "ablType": "character",
+                "ioMode": "OUTPUT",
+                "description": "Simple JSON field",
+                "msgElem": {
+                  "type": "field",
+                  "name": "response"
+                }
+              }]
+            }
+          }
+        }
+      }
+    }
+  }
+}

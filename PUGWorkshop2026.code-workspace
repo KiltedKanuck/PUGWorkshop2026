@@ -1,0 +1,34 @@
+{
+  "folders": [
+    {
+      "path": "."
+    }
+  ],
+  "settings": {
+    "abl.configuration.defaultRuntime": "ESAP",
+    "abl.configuration.runtimes": [
+      {
+        "name": "ESAP",
+        "path": "C:\\Progress\\Openedge"
+      }
+    ],
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true,
+    "editor.detectIndentation": false,
+    "files.exclude": {
+        "**/.DS_Store": true,
+        "**/Thumbs.db": true,
+        ".git": true,
+        ".builder": true,
+        ".gradle": true,
+        "build": true,
+        "gradle": true,
+        "rcode": true
+    },
+    "workbench.editor.enablePreview": false,
+    "workbench.editor.enablePreviewFromQuickOpen": false,
+    "workbench.editor.enablePreviewFromCodeNavigation": false,
+    "abl.buildMode": 1,
+    "java.configuration.updateBuildConfiguration": "disabled"
+  }
+}

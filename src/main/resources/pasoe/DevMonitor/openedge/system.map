@@ -1,0 +1,122 @@
+{
+  "services": {
+    "system": {
+      "version": "@APIVERSION@",
+      "description": "Provide system information for real-time status",
+      "operations": {
+        "/database/list": {
+          "GET": {
+            "contentType": "application/json",
+            "description": "Returns all connected databases keyed by logical name",
+            "accessControl": ["ROLE_ANONYMOUS"],
+            "statusCode": 200,
+            "entity": {
+              "name": "OpenEdge.Workshop.Interface.SystemService",
+              "function": "GetDatabaseList",
+              "description": "Object keyed by logical name; each value contains index, physicalName, type, and connection info",
+              "typeof": "Progress.Lang.Object",
+              "arg": [
+                {
+                  "ablName": "poDatabases",
+                  "ablType": "class Progress.Json.ObjectModel.JsonObject",
+                  "ioMode": "OUTPUT",
+                  "description": "Connected database listing keyed by logical name",
+                  "msgElem": {
+                    "type": "body"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "/database/stats/{ldbname}": {
+          "GET": {
+            "contentType": "application/json",
+            "description": "Returns runtime VST statistics for a specific connected database",
+            "accessControl": ["ROLE_ANONYMOUS"],
+            "statusCode": 200,
+            "entity": {
+              "name": "OpenEdge.Workshop.Interface.SystemService",
+              "function": "GetDatabaseStats",
+              "description": "Returns stats containing timestamp and VST-sourced categories for the requested database",
+              "typeof": "Progress.Lang.Object",
+              "arg": [
+                {
+                  "ablName": "pcDatabaseName",
+                  "ablType": "character",
+                  "ioMode": "INPUT",
+                  "description": "Logical database name",
+                  "msgElem": {
+                    "type": "path",
+                    "name": "ldbname"
+                  }
+                },
+                {
+                  "ablName": "poStatistics",
+                  "ablType": "class Progress.Json.ObjectModel.JsonObject",
+                  "ioMode": "OUTPUT",
+                  "description": "VST statistics grouped by category",
+                  "msgElem": {
+                    "type": "body"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "/pasoe/report": {
+          "GET": {
+            "contentType": "text/plain; charset=utf-8",
+            "description": "Generates status for the main Load Suite ABL Application via OEMANAGER and returns as plain text",
+            "accessControl": ["ROLE_ANONYMOUS"],
+            "statusCode": 200,
+            "entity": {
+              "name": "OpenEdge.Workshop.Interface.SystemService",
+              "function": "GetServerReport",
+              "description": "Reads various instance properties, queries OEMANAGER, and returns aggregated status",
+              "typeof": "Progress.Lang.Object",
+              "arg": [
+                {
+                  "ablName": "poOutput",
+                  "ablType": "class OpenEdge.Core.String",
+                  "ioMode": "OUTPUT",
+                  "description": "Aggregated PASOE status including agents, metrics, configuration, and client sessions",
+                  "msgElem": {
+                    "type": "body"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "/pasoe/status": {
+          "GET": {
+            "contentType": "application/json",
+            "description": "Generates status for the main Load Suite ABL Application via OEMANAGER and returns as JSON",
+            "accessControl": ["ROLE_ANONYMOUS"],
+            "statusCode": 200,
+            "entity": {
+              "name": "OpenEdge.Workshop.Interface.SystemService",
+              "function": "GetServerStatus",
+              "description": "Reads various instance properties, queries OEMANAGER, and returns aggregated status",
+              "typeof": "Progress.Lang.Object",
+              "arg": [
+                {
+                  "ablName": "poOutput",
+                  "ablType": "class OpenEdge.Core.String",
+                  "ioMode": "OUTPUT",
+                  "description": "Aggregated PASOE status including agents, metrics, configuration, and client sessions",
+                  "msgElem": {
+                    "type": "body"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "schemas": {
+      }
+    }
+  }
+}

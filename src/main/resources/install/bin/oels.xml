@@ -17,13 +17,15 @@
         limitations under the License.
     -->
 
+    <!-- NOTE: Must run from a PROENV session or with a valid DLC environment variable. -->
+
     <!-- Utilize a local file for properties. Allows this XML to provide defaults only. -->
     <property file="${basedir}/../conf/config.properties"/>
 
     <target name="help" description="Usage Instructions">
         <init_oe/> <!-- Initialize all OpenEdge properties. -->
 
-        <echo message="${line.separator}Management utility for the High Load Test Suite."/>
+        <echo message="${line.separator}Management utility for the OpenEdge Load Suite."/>
         <echo message="${line.separator}Usage Instructions:"/>
         <echo message="${line.separator} help       - Prints these usage instructions"/>
         <echo message="${line.separator} install    - Create a PASOE instance '${instance}' with an available OEAR"/>
@@ -53,9 +55,6 @@
         <echo message="                 timeout=${timeout} - Seconds tcman waits before timing out"/>
         <echo message="${line.separator} uninstall  - Alias for delete"/>
         <echo message="${line.separator} delete     - Stop and delete the PASOE instance '${instance}' (and embedded database, if available)"/>
-        <echo message="${line.separator} generate   - Generates a number of sample records for each table for testing"/>
-        <echo message="                 seed=${seed} - Number of seed records to create per table"/>
-        <echo message="                 Reissue this command to generate additional records using a higher seed value"/>
         <echo message="${line.separator} backup     - Create an offline PROBKUP of the database (DB must not be running)"/>
         <echo message="                 backupFile=${backupFile} - Destination path for the backup file"/>
         <echo message="                 compress=${compress} - Enable PROBKUP compression via -com flag (default: false)"/>
@@ -111,6 +110,7 @@
             <property name="https" value="${application.port.https}"/>
             <property name="ajp" value="${application.port.ajp}"/>
             <property name="shut" value="${application.port.shut}"/>
+            <property name="skipdb" value="false"/>
             <property name="codepage" value="${application.db.codepage}"/>
             <property name="collation" value="${application.db.collation}"/>
             <property name="seed" value="100000"/>
@@ -317,11 +317,22 @@
                 </then>
             </if>
 
-            <!-- Support for 13.x LTS and feature releases. -->
+            <!-- Support flags for 13.x LTS and feature releases. -->
             <if>
                 <equals arg1="${oeMajor}" arg2="13"/>
                 <then>
                     <property name="isOE13" value="true"/>
+                    <switch value="${oeMinor}">
+                        <case value="0">
+                            <property name="isOE130" value="true"/>
+                        </case>
+                        <case value="1">
+                            <property name="isOE131" value="true"/>
+                        </case>
+                        <case value="2">
+                            <property name="isOE132" value="true"/>
+                        </case>
+                    </switch>
                 </then>
             </if>
 
@@ -337,7 +348,7 @@
                     <equals arg1="${isOE127}" arg2="true"/>
                 </or>
             </condition>
-            <fail if="invalidVersion" message="OpenEdge 12.8 or later is required for this feature."/>
+            <fail if="invalidVersion" message="OpenEdge 12.8 LTS or later is required for this feature."/>
 
             <!-- Check for the utility which will inform us of installed components. -->
             <require file="${dlc.bin}${file.separator}${showcfg.exec}"/>
@@ -749,6 +760,23 @@ webapp=${primary.webapp.name}
                 </else>
             </if>
 
+            <if>
+                <isset property="isOE131"/>
+                <then>
+                    <!-- Override keyalias as temporary fix for PASOE issues on 13.1.x. -->
+                    <echo message="|-- Setting default keyalias for Tomcat"/>
+                    <exec executable="${tcman.util}" failonerror="false">
+                        <arg line="config psc.as.https.keyalias=testserver"/>
+                    </exec>
+
+                    <!-- Disable HTTPS as temporary fix for PASOE issues on 13.1.x. -->
+                    <echo message="|-- Setting default keyalias for Tomcat"/>
+                    <exec executable="${tcman.util}" failonerror="false">
+                        <arg line="feature HTTPS=off"/>
+                    </exec>
+                </then>
+            </if>
+
             <!-- Default encoding should be UTF-8, but allow for overrides. -->
             <echo message="|-- Setting URI encoding to ${tomcat.uri.encoding} for Tomcat"/>
             <exec executable="${tcman.util}" failonerror="false">
@@ -861,7 +889,7 @@ webapp=${primary.webapp.name}
             </exec>
 
             <!-- Set the port for the HealthCheck feature. -->
-            <echo message="|-- Setting port for HealthCheck feature"/>
+            <echo message="|-- Setting port for HealthCheck feature: ${application.port.health}"/>
             <exec executable="${tcman.util}" failonerror="false">
                 <arg line="config psc.as.healthcheck.port=${application.port.health}"/>
             </exec>
@@ -1023,12 +1051,14 @@ webapp=${primary.webapp.name}
             <entry key="application.db.lockwait" value="${application.db.lockwait}"/>
             <entry key="application.db.codepage" value="${application.db.codepage}"/>
             <entry key="application.db.collation" value="${application.db.collation}"/>
+            <entry key="application.db.noinstall" value="${skipdb}"/>
             <entry key="dateformat" value="${dateformat}"/>
             <entry key="numsep" value="${numsep}"/>
             <entry key="numdec" value="${numdec}"/>
             <entry key="system.detected.cpus" value="${systemCpuCount}"/>
             <entry key="system.detected.hostname" value="${systemHostname}"/>
             <entry key="system.detected.memory" value="${systemMemorySize}"/>
+            <entry key="has.RDBMS.Enterprise" value="${has.RDBMS.Enterprise}"/>
         </propertyfile>
 
         <!-- Deploy the primary OpenEdge Application aRchive (OEAR) for operations. -->
@@ -1086,7 +1116,7 @@ webapp=${primary.webapp.name}
         <echo message="${line.separator}Next, run the 'start' or 'startup' task to start the PASOE instance."/>
         <echo message="${line.separator}NOTE: If this is a fresh installation you will need sample data for the database:"/>
         <echo message="- If you have an existing database backup file, use the 'restore' task prior to the 'start[up]' task."/>
-        <echo message="- Run the 'start[up]' task then 'generate' (after successful startup) to seed the database with records."/>
+        <echo message="- Run the 'start[up]' task to start the database and PASOE instance."/>
     </target>
 
     <target name="uninstall">
@@ -1295,6 +1325,19 @@ webapp=${primary.webapp.name}
         </exec>
     </target>
 
+    <target name="status">
+        <init_oe/> <!-- Initialize all OpenEdge properties. -->
+
+        <requireDir folder="${catalina.base}" message="PASOE instance not found at ${catalina.base}. Please run the 'install' task first to create the instance."/>
+        <require file="${pas.bin}${file.separator}${oemanager.name}"/>
+
+        <!-- Get info about the current agents/sessions available -->
+        <exec executable="${pas.bin}${file.separator}${oemanager.name}" failonerror="true">
+            <arg value="status"/>
+            <arg line="ablapp=${statusapp}"/>
+        </exec>
+    </target>
+
     <target name="archive">
         <init_oe/> <!-- Initialize all OpenEdge properties. -->
 
@@ -1422,58 +1465,6 @@ webapp=${primary.webapp.name}
                        byline="true"
                        match="^(-profileMemory\s+.*)$"
                        replace="#\1"/>
-    </target>
-
-    <target name="status">
-        <init_oe/> <!-- Initialize all OpenEdge properties. -->
-
-        <requireDir folder="${catalina.base}" message="PASOE instance not found at ${catalina.base}. Please run the 'install' task first to create the instance."/>
-        <require file="${pas.bin}${file.separator}${oemanager.name}"/>
-
-        <!-- Get info about the current agents/sessions available -->
-        <exec executable="${pas.bin}${file.separator}${oemanager.name}" failonerror="true">
-            <arg value="status"/>
-            <arg line="ablapp=${statusapp}"/>
-        </exec>
-    </target>
-
-    <target name="generate">
-        <init_oe/> <!-- Initialize all OpenEdge properties. -->
-
-        <!-- Verify the database directory exists before proceeding. -->
-        <requireDir folder="${db.path}" message="Database directory does not exist at expected location: ${db.path}"/>
-
-        <!-- Verify the output directory exists before proceeding. -->
-        <requireDir folder="${pas.temp.dir}" message="Output directory does not exist at expected location: ${pas.temp.dir}"/>
-
-        <!-- Build the full logical database path and verify the backing .db file is present. -->
-        <local name="db.file.exists"/>
-        <available file="${db.full.path}.db" property="db.file.exists"/>
-
-        <!-- Fail immediately if the database backing file is not present in the expected location. -->
-        <fail message="Database file not found at ${db.full.path}.db">
-            <condition>
-                <not>
-                    <isset property="db.file.exists"/>
-                </not>
-            </condition>
-        </fail>
-
-        <!-- PCTDynRun will fail with a clear error if the database is not available. -->
-        <echo message="Checking database tables for generated records (expected per table: ${seed})..."/>
-        <PCTDynRun
-            dlcHome="${dlcHome}"
-            graphicalMode="false"
-            tempDir="${pas.temp.dir}"
-            procedure="OpenEdge/LoadSuite/Common/Util/GenSportsData"
-            stackSize="4096">
-            <propath>
-                <pathelement path="${catalina.base}/ablapps/${primary.ablapp.name}/openedge/OpenEdge.LoadSuite.apl"/>
-                <pathelement path="${catalina.base}/ablapps/${primary.ablapp.name}/openedge"/>
-            </propath>
-            <DBConnection dbName="${application.db.name}" dbDir="${db.path}"/>
-            <Parameter name="MaxRecords" value="${seed}"/>
-        </PCTDynRun>
     </target>
 
     <target name="backup">

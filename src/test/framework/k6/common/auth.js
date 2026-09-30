@@ -205,13 +205,13 @@ import { captureFailureContext } from './diagnostics.js';
 import { labelCheckName } from './utils.js';
 
 let AUTH_REQUIRED = String(__ENV.AUTH_REQUIRED || 'true').toLowerCase() !== 'false';
-let AUTH_CONTEXT_PATH = __ENV.AUTH_CONTEXT_PATH || '/loadsuite/static/auth';
+let AUTH_CONTEXT_PATH = __ENV.AUTH_CONTEXT_PATH || '/devsuite/static/auth';
 let AUTH_LOGIN_ENDPOINT = __ENV.AUTH_LOGIN_ENDPOINT || `${AUTH_CONTEXT_PATH}/j_spring_security_check`;
 let AUTH_LOGOUT_ENDPOINT = __ENV.AUTH_LOGOUT_ENDPOINT || `${AUTH_CONTEXT_PATH}/j_spring_security_logout`;
 const AUTH_SESSION_COOKIE_NAME = 'JSESSIONID';
-const AUTH_COOKIE_SCOPE_PATH = '/loadsuite';
-const AUTH_API_SCOPE_PATH = '/loadsuite/web/api';
-let AUTH_CONTEXT_API_PATH = __ENV.AUTH_CONTEXT_API_PATH || '/loadsuite/web/api/context';
+const AUTH_COOKIE_SCOPE_PATH = '/devsuite';
+const AUTH_API_SCOPE_PATH = '/devsuite/web/api';
+let AUTH_CONTEXT_API_PATH = __ENV.AUTH_CONTEXT_API_PATH || '/devsuite/web/api/context';
 let AUTH_USERNAME_PREFIX = __ENV.AUTH_USERNAME_PREFIX || 'oels-vu';
 let AUTH_PASSWORD = __ENV.AUTH_PASSWORD || 'password';
 let AUTH_LOGOUT_EACH_ITERATION = String(__ENV.AUTH_LOGOUT_EACH_ITERATION || 'false').toLowerCase() === 'true';
@@ -519,7 +519,7 @@ export function handleSessionDurationExpiry() {
  * @note This should only be called from diagnostics/validation test suites, not load tests.
  */
 export function validateAuthenticatedSession(username) {
-  const pingTestUrl = `${BASE_URL}/loadsuite/web/api/catalog/ping`;
+  const pingTestUrl = `${BASE_URL}/devsuite/web/api/catalog/ping`;
   
   logAuthDebug(`session-validate: about to GET ${pingTestUrl}`);
   
@@ -542,7 +542,7 @@ export function validateAuthenticatedSession(username) {
       response: res,
       metadata: {
         username,
-        endpoint: '/loadsuite/web/api/catalog/ping',
+        endpoint: '/devsuite/web/api/catalog/ping',
       },
     });
     fail(

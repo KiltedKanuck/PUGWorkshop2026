@@ -208,7 +208,7 @@ k6 run --env PROFILE=smoke --env SCENARIOS_INCLUDE=state,customer scripts/launch
 | `AUTH_REQUIRED` | boolean | `AUTH_REQUIRED=true` | `"AUTH_REQUIRED": true` |
 | `AUTH_USERNAME_PREFIX` | string | `AUTH_USERNAME_PREFIX=oels-vu` | `"AUTH_USERNAME_PREFIX": "oels-vu"` |
 | `AUTH_PASSWORD` | string | `AUTH_PASSWORD=secret` | `"AUTH_PASSWORD": "secret"` |
-| `AUTH_CONTEXT_PATH` | string | `AUTH_CONTEXT_PATH=/loadsuite/static/auth` | `"AUTH_CONTEXT_PATH": "/loadsuite/static/auth"` |
+| `AUTH_CONTEXT_PATH` | string | `AUTH_CONTEXT_PATH=/devsuite/static/auth` | `"AUTH_CONTEXT_PATH": "/devsuite/static/auth"` |
 | `AUTH_LOGIN_ENDPOINT` | string | `AUTH_LOGIN_ENDPOINT=/…/j_spring_security_check` | `"AUTH_LOGIN_ENDPOINT": "/…/j_spring_security_check"` |
 | `AUTH_LOGOUT_ENDPOINT` | string | `AUTH_LOGOUT_ENDPOINT=/…/j_spring_security_logout` | `"AUTH_LOGOUT_ENDPOINT": "/…/j_spring_security_logout"` |
 | `AUTH_LOGOUT_EACH_ITERATION` | boolean | `AUTH_LOGOUT_EACH_ITERATION=true` | `"AUTH_LOGOUT_EACH_ITERATION": true` |
@@ -218,7 +218,7 @@ k6 run --env PROFILE=smoke --env SCENARIOS_INCLUDE=state,customer scripts/launch
 | `FAILURE_LOG_LIMIT_PER_VU` | number | `FAILURE_LOG_LIMIT_PER_VU=10` | `"FAILURE_LOG_LIMIT_PER_VU": 10` |
 | `FAILURE_BODY_SNIPPET_LENGTH` | number | `FAILURE_BODY_SNIPPET_LENGTH=300` | `"FAILURE_BODY_SNIPPET_LENGTH": 300` |
 | `API_PATH` | string | `API_PATH=/data/state` | `"API_PATH": "/data/state"` |
-| `AUTH_CONTEXT_API_PATH` | string | `AUTH_CONTEXT_API_PATH=/loadsuite/web/api/context` | `"AUTH_CONTEXT_API_PATH": "/loadsuite/web/api/context"` |
+| `AUTH_CONTEXT_API_PATH` | string | `AUTH_CONTEXT_API_PATH=/devsuite/web/api/context` | `"AUTH_CONTEXT_API_PATH": "/devsuite/web/api/context"` |
 | `AUTH_SESSION_DURATION_SECONDS` | number | `AUTH_SESSION_DURATION_SECONDS=3600` | `"AUTH_SESSION_DURATION_SECONDS": 3600` |
 | `CREATE_SEED_RECORDS` | boolean | `CREATE_SEED_RECORDS=false` | `"CREATE_SEED_RECORDS": false` |
 | `SEED_RECORD_MAX` | number | `SEED_RECORD_MAX=50000` | `"SEED_RECORD_MAX": 50000` |

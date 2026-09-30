@@ -132,17 +132,17 @@ These are all environment variables referenced in the k6 JS source.
 | `MIN_THINK_TIME` | `0.1` | Iteration pause for load/stress and lower bound for chaos |
 | `MAX_THINK_TIME` | `1.0` | Chaos-only upper bound for random think time |
 | `SEED_RECORD_RATIO` | `1` | CRUD setup seed pool sizing ratio |
-| `API_PATH` | per CRUD script default (`/loadsuite/web/api/data/<resource>`) | Override CRUD endpoint path |
+| `API_PATH` | per CRUD script default (`/devsuite/web/api/data/<resource>`) | Override CRUD endpoint path |
 | `AUTH_REQUIRED` | `true` | Require per-VU login before requests |
 | `AUTH_USERNAME_PREFIX` | `oels-vu` | Username format `<prefix>-<VU_ID>` |
 | `AUTH_PASSWORD` | `password` | Password for auth login |
-| `AUTH_CONTEXT_PATH` | `/loadsuite/static/auth` | Base context for auth endpoints |
+| `AUTH_CONTEXT_PATH` | `/devsuite/static/auth` | Base context for auth endpoints |
 | `AUTH_LOGIN_ENDPOINT` | `<AUTH_CONTEXT_PATH>/j_spring_security_check` | Login endpoint override |
 | `AUTH_LOGOUT_ENDPOINT` | `<AUTH_CONTEXT_PATH>/j_spring_security_logout` | Logout endpoint override |
 | `AUTH_LOGOUT_EACH_ITERATION` | `false` | Optional per-iteration logout |
 | `AUTH_STICKY_SESSIONS` | `true` | Controls `noCookiesReset` behavior |
 | `AUTH_DEBUG` | `false` | Emits auth debug logs |
-| `AUTH_CONTEXT_API_PATH` | `/loadsuite/web/api/context` | Base path for the context invalidation API (`/invalidate`, `/check`) |
+| `AUTH_CONTEXT_API_PATH` | `/devsuite/web/api/context` | Base path for the context invalidation API (`/invalidate`, `/check`) |
 | `AUTH_SESSION_DURATION_SECONDS` | `0` | Per-VU session lifetime in seconds; `0` = disabled. When elapsed, the invalidation cycle replaces the current iteration's scenario work, then re-login occurs on the next iteration |
 | `ENABLE_FAILURE_DIAGNOSTICS` | `true` | Enable structured failure diagnostics logs (`false` disables diagnostics output) |
 | `FAILURE_LOG_LIMIT_PER_VU` | `0` | Max diagnostic failure logs per VU (`0` = unlimited) |
