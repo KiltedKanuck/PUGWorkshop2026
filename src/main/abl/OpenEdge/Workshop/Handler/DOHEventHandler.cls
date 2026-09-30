@@ -82,7 +82,7 @@ class {&CLASS_PACKAGE}.Handler.DOHEventHandler
     var private character cServicesWhitelist = "catalog,logs,system":u.
 
     /* Fixed credentials for sealed DB assertion token. */
-    var private character cResetUser = "ResetUser":u, cResetDomain = "OELS":u, cResetPasscode = "DevSuite":u.
+    var private character cResetUser = "ResetUser":u, cResetDomain = "PUG":u, cResetPasscode = "DevSuite":u.
 
     /* Access the service-level logging manager. */
     define protected property oLogger as ILogWriter no-undo
