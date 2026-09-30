@@ -12,15 +12,15 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 
 # Remove any existing image by ane expected repository name
-echo "Cleaning up Docker images for repository: oels/k6*"
-docker images --format '{{.Repository}} {{.ID}}' --filter=reference='oels/k6*' | \
+echo "Cleaning up Docker images for repository: pug/k6*"
+docker images --format '{{.Repository}} {{.ID}}' --filter=reference='pug/k6*' | \
 awk '{ print $2 }' | \
 xargs -r docker rmi -f
 echo "Cleanup complete."
 
 # Load the current image archive
 echo "Loading Docker image from archive..."
-docker image load --input oels-k6-latest.tar
+docker image load --input pug-k6-latest.tar
 
 # Report current images registered
 echo "Available Docker images:"

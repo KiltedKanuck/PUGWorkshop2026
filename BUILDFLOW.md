@@ -1,10 +1,10 @@
-# OpenEdge Load Suite Build Flow
+# OpenEdge Dev Suite Build Flow
 
 This document describes the [TeamCity project](https://teamcity.bedford.progress.com/project/OpenEdge_DevelopBranchBuilds_OpenEdgeCi_DevSuite) as users see it in TeamCity and explains how values and artifact names change across build stages.
 
 ## TeamCity Project Layout
 
-- OpenEdge Load Suite
+- OpenEdge Dev Suite
     - OE 13.1.0 (release pipeline)
         - Build
         - Upload_to_Artifactory
@@ -22,7 +22,7 @@ These are defined once at the project root and inherited unless overridden:
 - ARTIFACTORY_MAVEN_REPO = oe-maven-develop-bedford
 - env.dlcType = linuxx86_64
 - TOOLNAME = OpenEdge.Workshop
-- COMPONENT = oels
+- COMPONENT = pug
 - env.JAVA_HOME, JAVA_HOME, TC_CHK_PLAT, CURL_EXEC, and related shared values
 
 > Of the above items, `env.app_api_version` is the most likely to change in the future. All artifacts are build using this value and indicates when a significant change to the application API has been introduced which would affect the related k6 tests.
@@ -91,17 +91,17 @@ There are two distinct stages:
 - Server-Side Installer Package
   - Source File: `build/dist/installer.zip`
   - Target Path: `%ARTIFACTORY_MAVEN_REPO%/%OE_MAVEN_ORG%/%COMPONENT%/%env.app_api_version%/%COMPONENT%-%system.build_target_oe_version%.zip`
-    - Example (13.1.0): oe-maven-develop-bedford/com/progress/openedge/oels/1.0.0/oels-13.1.0.zip
+    - Example (13.1.0): oe-maven-develop-bedford/com/progress/openedge/pug/1.0.0/pug-13.1.0.zip
 
 - Server-Side Logic Packages
   - Source File: `build/dist/%TOOLNAME%.zip` (eg. `build/dist/OpenEdge.Workshop.zip`)
   - Target Path: `%ARTIFACTORY_MAVEN_REPO%/%OE_MAVEN_ORG%/%COMPONENT%/%env.app_api_version%/%TOOLNAME%-%system.build_target_oe_version%-%env.dlcType%.zip`
-    - Example (13.1.0): oe-maven-develop-bedford/com/progress/openedge/oels/1.0.0/OpenEdge.Workshop-13.1.0-linuxx86_64.zip
+    - Example (13.1.0): oe-maven-develop-bedford/com/progress/openedge/pug/1.0.0/OpenEdge.Workshop-13.1.0-linuxx86_64.zip
 
 - Docker k6 Client Image
   - Source File: `build/dist/k6client-docker-image.zip`
   - Target Path: `%ARTIFACTORY_MAVEN_REPO%/%OE_MAVEN_ORG%/%COMPONENT%/%env.app_api_version%/%COMPONENT%-%env.app_api_version%-k6-client-docker.zip`
-    - Example (13.1.0 release train): oe-maven-develop-bedford/com/progress/openedge/oels/1.0.0/oels-1.0.0-k6-client-docker.zip
+    - Example (13.1.0 release train): oe-maven-develop-bedford/com/progress/openedge/pug/1.0.0/pug-1.0.0-k6-client-docker.zip
 
 **Notes:**
 
@@ -112,7 +112,7 @@ There are two distinct stages:
 
 ```mermaid
 flowchart TD
-    Root[OpenEdge Load Suite]
+    Root[OpenEdge Dev Suite]
 
     subgraph S128[OE 12.8.x]
         B128[Build]

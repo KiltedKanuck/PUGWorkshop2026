@@ -67,7 +67,7 @@
         "/pasoe/report": {
           "GET": {
             "contentType": "text/plain; charset=utf-8",
-            "description": "Generates status for the main Load Suite ABL Application via OEMANAGER and returns as plain text",
+            "description": "Generates status for the main Dev Suite ABL Application via OEMANAGER and returns as plain text",
             "accessControl": ["ROLE_ANONYMOUS"],
             "statusCode": 200,
             "entity": {
@@ -92,7 +92,7 @@
         "/pasoe/status": {
           "GET": {
             "contentType": "application/json",
-            "description": "Generates status for the main Load Suite ABL Application via OEMANAGER and returns as JSON",
+            "description": "Generates status for the main Dev Suite ABL Application via OEMANAGER and returns as JSON",
             "accessControl": ["ROLE_ANONYMOUS"],
             "statusCode": 200,
             "entity": {

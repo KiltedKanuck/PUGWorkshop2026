@@ -1,6 +1,6 @@
 # AWS k6 Runtime Setup
 
-This guide details the full setup instructions for creating an EC2 instance which can run the k6 tests for OpenEdge Load Suite (OELS).
+This guide details the full setup instructions for creating an EC2 instance which can run the k6 tests for OpenEdge Dev Suite (OELS).
 
 ## Initial Updates
 
@@ -103,7 +103,7 @@ echo "port range:" && cat /proc/sys/net/ipv4/ip_local_port_range
 
 Unzip the latest to a tests directory:
 
-`unzip oels-1.0.0-k6-tests.zip`
+`unzip pug-1.0.0-k6-tests.zip`
 
 Make the helper scripts executable:
 

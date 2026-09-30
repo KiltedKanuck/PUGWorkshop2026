@@ -170,7 +170,7 @@ String classPathPackage = classPackageName.replace(".", "/")
 logger.quiet("App Class Package: $classPackageName ($classPathPackage)")
 
 // Names for tokenization of PASOE and OEAR installation artifacts.
-String pasoeInstanceName = requirePropValue("pasoe_instance_name", getSafePropValue("pasoe_instance_name", "oels")).toLowerCase()
+String pasoeInstanceName = requirePropValue("pasoe_instance_name", getSafePropValue("pasoe_instance_name", "pug")).toLowerCase()
 String pasoeInstanceHttp = requireNumericPropValue("pasoe_instance_http", getSafePropValue("pasoe_instance_http", "7780"))
 String pasoeInstanceHttps = requireNumericPropValue("pasoe_instance_https", getSafePropValue("pasoe_instance_https", "7783"))
 String pasoeInstanceAjp = requireNumericPropValue("pasoe_instance_ajp", getSafePropValue("pasoe_instance_ajp", "7782"))
@@ -406,8 +406,8 @@ dependencies {
     OEAntJar("com/progress/openedge:oeant:${oe_build_version}@jar") { changing = true }
 
     // Artifacts for Docker containerization (deployment support files around the Docker image)
-    // Expected: com/progress/openedge/oels/<api_version>/oels-<api_version>-docker-support.zip
-    dockerSupport("com/progress/openedge:oels:${apiVersion}:docker-support@zip") { changing = true }
+    // Expected: com/progress/openedge/pug/<api_version>/pug-<api_version>-docker-support.zip
+    dockerSupport("com/progress/openedge:pug:${apiVersion}:docker-support@zip") { changing = true }
 }
 
 // Looks for a string in a text file, returns true when found
@@ -877,7 +877,7 @@ task packageProtectedCode(type: APL) {
     }
 
     manifest {
-        attributes.put AttributeKeys.ImplementationTitle, "Load Suite"
+        attributes.put AttributeKeys.ImplementationTitle, "Dev Suite"
         attributes.put AttributeKeys.ImplementationVendor, "Progress Software Corporation"
         attributes.put AttributeKeys.ImplementationVersion, "${oe_build_version}"
         attributes.put AttributeKeys.ComponentName, "${classPackageName}"
@@ -1164,7 +1164,7 @@ task ablTestReport(){
     }
 
     doLast {
-        generateAblTestReport(testsDir, "oels", reportsDir, avmTempDir, dlcType == "nt64" && gradle.taskGraph.hasTask(local))
+        generateAblTestReport(testsDir, "pug", reportsDir, avmTempDir, dlcType == "nt64" && gradle.taskGraph.hasTask(local))
     }
 }
 
@@ -1798,8 +1798,8 @@ File componentsDir = file("$buildDir/components")
 File dockerfileK6 = file("$projectDir/Dockerfile-k6")
 
 // Define the Docker image names expected to be created/saved.
-String dockerGroup = getSafePropValue("docker_group", "oels")
-String dockerBaseName = getSafePropValue("docker_basename", "oels")
+String dockerGroup = getSafePropValue("docker_group", "pug")
+String dockerBaseName = getSafePropValue("docker_basename", "pug")
 String dockerAppName = getSafePropValue("docker_appname", "k6")
 String dockerImageVersion = "${dockerGroup}/${dockerAppName}:${apiVersion}"
 String dockerImageLatest = "${dockerGroup}/${dockerAppName}:latest"
@@ -1832,7 +1832,7 @@ task extractDependencies(type: Copy) {
 }
 
 // Build the k6 Docker image using the official Grafana k6 base image.
-// The Dockerfile downloads oels-<api_version>-k6-tests.zip from Artifactory during image build.
+// The Dockerfile downloads pug-<api_version>-k6-tests.zip from Artifactory during image build.
 task buildClientImage(type: DockerBuildImage) {
     dependsOn extractDependencies
     dependsOn echoCurrentBranch

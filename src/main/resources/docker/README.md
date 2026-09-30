@@ -1,8 +1,8 @@
-# OpenEdge Load Suite
+# OpenEdge Dev Suite
 
 ### Containerized k6 Client Overview
 
-This document outlines the process necessary to run the **OpenEdge Load Suite (OELS)** k6 client as a container. The recommended workflow is to start the container only when you need it, open an interactive shell, run Grafana k6 tests against a remote OELS server instance, and then exit so the container is removed automatically.
+This document outlines the process necessary to run the **OpenEdge Dev Suite (OELS)** k6 client as a container. The recommended workflow is to start the container only when you need it, open an interactive shell, run Grafana k6 tests against a remote OELS server instance, and then exit so the container is removed automatically.
 
 
 ### Assumptions
@@ -45,9 +45,9 @@ Please [start the local Docker service](INSTALL.md#starting-docker-services) if 
 
 The following steps will extract the image from the downloaded archive and ensure you load the latest image. Please follow this process for any subsequent updates to the container, when and if they become available.
 
-1. Locate the `oels-<version>-k6-client-docker.zip` archive downloaded and move to a preferred location.
+1. Locate the `pug-<version>-k6-client-docker.zip` archive downloaded and move to a preferred location.
 
-2. Extract `oels-<version>-k6-client-docker.zip` into its own directory which should contain the following folders:
+2. Extract `pug-<version>-k6-client-docker.zip` into its own directory which should contain the following folders:
 
         configs -- Sample configuration files (auto-populated on first run)
         logs    -- k6 test results and output logs
@@ -58,7 +58,7 @@ The following steps will extract the image from the downloaded archive and ensur
         INSTALL.md            -- Docker installation instructions
         README.md             -- This file :)
         Open k6 Dashboard.url -- Double-click to open the live dashboard in your browser
-        oels-k6-latest.tar    -- The latest container image for Docker
+        pug-k6-latest.tar    -- The latest container image for Docker
 
 3. Open a terminal session (for Linux), or start PowerShell (for Windows) and execute `wsl -d Ubuntu`.
 
@@ -66,21 +66,21 @@ The following steps will extract the image from the downloaded archive and ensur
 
     Please note for a WSL environment:
 
-    * If you extracted the archive in `C:\Downloads\oels-<version>-k6-client-docker` use `cd /mnt/c/Downloads/oels-<version>-k6-client-docker`
+    * If you extracted the archive in `C:\Downloads\pug-<version>-k6-client-docker` use `cd /mnt/c/Downloads/pug-<version>-k6-client-docker`
     * The name `/mnt/c` is your `C:` drive, `/mnt/d` for the `D:` drive, etc.
 
 5. **Note:** If you are updating an existing image, make sure no OELS k6 container is currently running before continuing. Exit the interactive shell to terminate the container.
 
-6. Run the following script to first check (and remove) any existing OELS k6 image and then load the latest image from `oels-k6-latest.tar`:
+6. Run the following script to first check (and remove) any existing OELS k6 image and then load the latest image from `pug-k6-latest.tar`:
 
         sudo ./update_image.sh
 
-    You may see a message `Error response from daemon: No such image: oels/k6:<version>`; this is normal and expected the first time you load the image.
+    You may see a message `Error response from daemon: No such image: pug/k6:<version>`; this is normal and expected the first time you load the image.
 
 7. Verify that the container image was loaded correctly by examining the output of the previous command which should provide output similar to the text below:
 
         REPOSITORY          TAG        IMAGE ID        CREATED        SIZE
-        oels/k6           1.0.0      <hex_id_string> <timestamp>     148MB
+        pug/k6           1.0.0      <hex_id_string> <timestamp>     148MB
 
 8. Continue to the [**Docker Container Startup**](#docker-container-startup) steps below.
 

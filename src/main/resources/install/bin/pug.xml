@@ -25,7 +25,7 @@
     <target name="help" description="Usage Instructions">
         <init_oe/> <!-- Initialize all OpenEdge properties. -->
 
-        <echo message="${line.separator}Management utility for the OpenEdge Load Suite."/>
+        <echo message="${line.separator}Management utility for the OpenEdge Dev Suite."/>
         <echo message="${line.separator}Usage Instructions:"/>
         <echo message="${line.separator} help       - Prints these usage instructions"/>
         <echo message="${line.separator} install    - Create a PASOE instance '${instance}' with an available OEAR"/>

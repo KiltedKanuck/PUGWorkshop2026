@@ -44,11 +44,11 @@ The following assumes you have not yet installed WSL2 on your Windows environmen
 
 Follow these common instructions for installing **Docker Community Edition (CE)** and the **Docker Command-Line Interface (CLI)** on an Ubuntu installation. This may be a standalone OS image running directly on x86_64 hardware, a virtual machine, or Windows Subsystem for Linux (WSL2). This only needs to be performed once on the host OS.
 
-1. Navigate (change directory) to the folder where the extracted `oels-<version>-client-docker` directory exists.
+1. Navigate (change directory) to the folder where the extracted `pug-<version>-client-docker` directory exists.
 
     Please note for a WSL environment:
 
-    * If you extracted the archive in `C:\Downloads\oels-<version>-client-docker` use `cd /mnt/c/Downloads/oels-<version>-client-docker`
+    * If you extracted the archive in `C:\Downloads\pug-<version>-client-docker` use `cd /mnt/c/Downloads/pug-<version>-client-docker`
     * The name `/mnt/c` is your `C:` drive, `/mnt/d` for the `D:` drive, etc.
 
 2. Execute the installation script with the help of `sudo` (note the forward slash is intentional):

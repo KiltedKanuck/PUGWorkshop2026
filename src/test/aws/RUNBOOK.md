@@ -65,13 +65,13 @@ before starting a test.
 ```
 # Shared defaults for all OELS nodes - applied to any Host entry below that
 # does not override them. Must appear before the individual Host entries.
-Host oels-pasoe k6-node-*
+Host pug-pasoe k6-node-*
     User ubuntu
     IdentityFile ~/.ssh/loadteam.pem
     ServerAliveInterval 60
 
 # OELS PASOE Target Server
-Host oels-pasoe
+Host pug-pasoe
     HostName <pasoe-public-ip>
 
 # OELS k6 Runner Nodes - update HostName values each session from the EC2 console

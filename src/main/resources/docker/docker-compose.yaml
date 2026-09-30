@@ -1,5 +1,5 @@
 # -----
-# ----- OpenEdge Load Suite k6 Client docker compose file -----
+# ----- OpenEdge Dev Suite k6 Client docker compose file -----
 # ----- Company: Progress Software
 # ----- Author: Dustin Grau dugrau@progress.com
 # ----- Date: 2026-05-26
@@ -22,7 +22,7 @@
 # -----
 services:
   k6-client:                                # OELS k6 load testing client container
-    image: oels/k6:latest
+    image: pug/k6:latest
     ports:
       - "5665:5665"                         # Expose dashboard to host/network using default port 5665
     volumes:

@@ -1,4 +1,4 @@
-OpenEdge Load Suite - Server Installation
+OpenEdge Dev Suite - Server Installation
 
 This package contains the server-side installation and management utility for creating
 and maintaining a PASOE instance and its database-backed test environment.
@@ -17,8 +17,8 @@ Prerequisites:
 
 Usage:
 
-- Run `bin/oels.[bat|sh] help` to view the available commands and options.
-- Run `bin/oels.[bat|sh] <task>` to execute specific actions:
+- Run `bin/pug.[bat|sh] help` to view the available commands and options.
+- Run `bin/pug.[bat|sh] <task>` to execute specific actions:
     - Use `install` to create and tailor the PASOE instance.
     - Use `startup` or `start` to start the instance.
     - Use `shutdown` or `stop` to stop the instance.
@@ -62,7 +62,7 @@ all of which can be modified post-install via the followng respective files:
 PASOE - OELS Instance:
     - `CATALINA_BASE/conf/openedge.properties`  - Standard PASOE configuration file
     - `CATALINA_BASE/ablapps/DevSuite/openedge/startup.pf`  - AVM startup params
-    - `CATALINA_BASE/bin/oels_setenv.[bat|sh]`  - Application environment variables
+    - `CATALINA_BASE/bin/pug_setenv.[bat|sh]`  - Application environment variables
         - `USE_ORIGINAL_CONTEXT_LOGIC=[true|false]`  - Opt in (true) or out (false) of using customer-specific user context logic
 
 RDBMS - "thrasher" Database:

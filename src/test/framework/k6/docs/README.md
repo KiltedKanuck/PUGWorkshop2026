@@ -1,4 +1,4 @@
-# OpenEdge Load Suite - Grafana k6 Load Testing
+# OpenEdge Dev Suite - Grafana k6 Load Testing
 
 This folder contains individual k6 scripts to exercise the RESTful endpoints of the OELS API server:
 
@@ -29,7 +29,7 @@ Execution of tests may be run by use of the Bash shell scripts. See "Available T
 
 All test results and output files are automatically saved to a local `logs/<scenario>/<config_name>/<timestamp>/` directory.
 
-> Note: By default all configuration files run with a `BASE_URL` of `http://127.0.0.1:7780` and should be changed to point your intended OpenEdge Load Suite server.
+> Note: By default all configuration files run with a `BASE_URL` of `http://127.0.0.1:7780` and should be changed to point your intended OpenEdge Dev Suite server.
 
 ---
 
